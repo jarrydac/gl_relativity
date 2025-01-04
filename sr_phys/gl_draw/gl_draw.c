@@ -3,7 +3,7 @@
 
 #include "gl_draw.h"
 
-#define WL_VBO_SIZE 1024
+#define WL_VBO_SIZE 32768
 
 static camera_t camera;
 static float sr_c;
@@ -215,7 +215,6 @@ unsigned int sr_draw_wl( wl_t* wl ){
 
         // Ensure one of our verticies comes from behind the camera;
         if( intv_a*intv_b < 0 && ( wl->verticies[i][0] < camera.time || wl->verticies[i-1][0] < camera.time) ){ // Different signs.
-            printf("%f, %f\n", intv_a, intv_b);
             glm_vec4_copy(wl->verticies[i-1], render_vert.a);
             glm_vec4_copy(wl->verticies[i], render_vert.b);
             assigned = 1;
@@ -250,7 +249,7 @@ unsigned int sr_render(void){
     glUniform1f(time_loc, camera.time);
 
     glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
-    glPointSize(5.0f);
+    glPointSize(3.0f);
     glDrawArrays(GL_POINTS, 0, wl_vbo_index);
 
     wl_vbo_index = 0; // Restart vertex buffer.
