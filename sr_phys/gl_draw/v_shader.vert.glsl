@@ -4,21 +4,6 @@ layout (location = 1) in vec4 b_st;
 
 out vec3 color;
 
-out vec3 s;
-out float t;
-out float t1;
-out float t2;
-out float A;
-out float B;
-out float C;
-
-out float intv;
-
-out vec3 a;
-out vec3 b;
-out float t_a;
-out float t_b;
-
 uniform float sr_c;
 uniform float time;
 
@@ -26,7 +11,27 @@ uniform mat4 model;
 uniform mat4 view;
 uniform mat4 projection;
 
+/* Intersect a parameterised line from a to b,
+   ie. s = (1/(t_b-t_a)**2) * ( a(t_b-t) + b(t-t_a) ) with the 0-interval
+   hyperbola ie (ct)**2 = dot(s,s)
+   */
 void main(){
+    vec3 a;
+    vec3 b;
+    float t_a;
+    float t_b;
+
+    float intv;
+    float A;
+    float B;
+    float C;
+
+    vec3 s;
+    float t;
+    float t1;
+    float t2;
+
+    // Make a the lowest t point.
     if(a_st.x < b_st.x){
         a = (view*model*vec4(a_st.yzw, 1.0)).xyz;
         b = (view*model*vec4(b_st.yzw, 1.0)).xyz;
@@ -43,11 +48,13 @@ void main(){
     float ab = dot(a,b);
     float bb = dot(b,b);
 
-    A = aa - 2.0*ab + bb - sr_c*sr_c;
-    B = -2.0*(aa*t_a - ab*(t_a+t_b) + bb*t_b);
-    C = aa*t_a*t_a - 2.0*ab*t_a*t_b + bb*t_b*t_b; 
+    float fact = 1/( (t_b-t_a)*(t_b-t_a) );
 
-    float intv = B*B - 4.0*A*C;
+    A = fact*(aa -2.0*ab + bb) - sr_c*sr_c;
+    B = -2.0*fact*(aa*t_b - ab*(t_a+t_b) + bb*t_a);
+    C = fact*(aa*t_b*t_b - 2.0*ab*t_a*t_b + bb*t_a*t_a); 
+
+    intv = B*B - 4.0*A*C;
 
     if(intv < 0){
         float intv_a = sr_c*sr_c*t_a*t_a - dot(a,a);
@@ -61,10 +68,15 @@ void main(){
     t1 = ( -B - sqrt( intv ) ) / (2.0*A);
     t2 = ( -B + sqrt( intv ) ) / (2.0*A);
 
-    if(t1<(t_b && t1>t_a ) t=t1;
-    if(t2<t_b && t2>t_a ) t=t2;
+    // We want the largest (most recent) negative time.
 
-    s = a*(t-t_a) + b*(t_b-t);
+    if(t1 < t2){
+        t = t2<0 ? t2 : t1;    
+    }else{
+        t = t1<0 ? t1 : t2;
+    }
+
+    s = (1/(t_b-t_a)) * ( a*(t_b-t) + b*(t-t_a) ); // This is the line equation.
     
     gl_Position = projection * vec4(s, 1.0);
     color = vec3(0.0f, 0.0f, 0.0f);
