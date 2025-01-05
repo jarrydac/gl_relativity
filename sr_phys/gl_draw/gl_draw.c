@@ -27,9 +27,9 @@ static int time_loc;
 
 static int sr_c_comp_loc;
 static int time_comp_loc;
-static int wl_lens_loc;
 static int model_comp_loc;
 static int view_comp_loc;
+static int vbo_comp_offset_loc;
 
 static float sr_c = 30.0f;
 
@@ -143,6 +143,7 @@ int sr_draw_init( char* v_shader_str, char* f_shader_str, char* c_shader_str ){
     view_comp_loc = glGetUniformLocation(compute_program, "view");
     sr_c_comp_loc = glGetUniformLocation(compute_program, "sr_c");
     time_comp_loc = glGetUniformLocation(compute_program, "time");
+    vbo_comp_offset_loc = glGetUniformLocation(compute_program, "vbo_offset");
 
     // Init static model and perspective.
     glm_mat4_identity(model);
@@ -263,7 +264,90 @@ unsigned int sr_draw_wl( wl_t* wl ){
     return 0;
 }
 
+GLuint sr_make_vec4_buffer( vec4 vecs[], unsigned int count ){
+    GLuint buffer;
+    glGenBuffers(1, &buffer);
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, buffer);
+    glBufferData(GL_SHADER_STORAGE_BUFFER, count*sizeof(vec4), vecs, GL_STATIC_READ);
+    return buffer;
+}
+
+GLuint sr_make_int_buffer( unsigned int vals[], unsigned int count ){
+    GLuint buffer;
+    glGenBuffers(1, &buffer);
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, buffer);
+    glBufferData(GL_SHADER_STORAGE_BUFFER, count*sizeof(unsigned int), vals, GL_STATIC_READ);
+    return buffer;
+}
+
+unsigned int sr_render_mesh( 
+        unsigned int anchor_buff, 
+        unsigned int anchor_count,
+        unsigned int vbo_buff,      // Vertex offsets from anchor
+        unsigned int vbo_count,
+        unsigned int ebo_buff,
+        unsigned int ebo_count,
+        mat4 model
+    ){
+    
+    mat4 view;
+    GLuint draw_buff;
+
+    // Setup the program
+    camera_view_matrix(view);
+    glUseProgram(compute_program);
+
+    glUniform1f(sr_c_comp_loc, sr_c);
+    glUniform1f(time_comp_loc, camera.time);
+    glUniform1ui(vbo_comp_offset_loc, 0);
+
+    glUniformMatrix4fv(view_comp_loc, 1, GL_FALSE, (float*)view);
+    glUniformMatrix4fv(model_comp_loc, 1, GL_FALSE, (float*)model);
+
+    // Setup drawing buffer.
+    glGenBuffers(1, &draw_buff);
+    glBindBuffer(GL_ARRAY_BUFFER, draw_buff);
+    glBindVertexArray(wl_vao);
+    glBufferData(GL_ARRAY_BUFFER, vbo_count*sizeof(render_vert_t), NULL, GL_STATIC_DRAW);
+    glVertexAttribPointer(0, 4, 
+            GL_FLOAT, GL_FALSE, 
+            sizeof(render_vert_t), (void*)( offsetof(render_vert_t, a) ) 
+            );  
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(1, 4, 
+            GL_FLOAT, GL_FALSE, 
+            sizeof(render_vert_t), (void*)( offsetof(render_vert_t, b) ) 
+            );  
+    glEnableVertexAttribArray(1);
+
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, anchor_buff);
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, draw_buff);
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 3, vbo_buff);
+
+    glDispatchCompute(anchor_count, vbo_count, 1);
+    glMemoryBarrier(GL_VERTEX_ATTRIB_ARRAY_BARRIER_BIT);
+
+    glUseProgram(shader_program);
+
+    glBindBuffer(GL_ARRAY_BUFFER, draw_buff);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo_buff);
+
+    glUniformMatrix4fv(view_loc, 1, GL_FALSE, (float*)view);
+    mat4 identity;
+    glm_mat4_identity(identity);
+    glUniformMatrix4fv(model_loc, 1, GL_FALSE, (float*)identity);
+    glUniform1f(sr_c_loc, sr_c);
+    glUniform1f(time_loc, camera.time);
+
+    glDrawElements(GL_TRIANGLES, ebo_count, GL_UNSIGNED_INT, 0);
+
+    glDeleteBuffers(1, &draw_buff);
+
+    return 0;
+}
+
 unsigned int sr_render(void){
+    return 0;
     mat4 view;
     // Camera position setup;
     camera_view_matrix(view);
@@ -290,12 +374,16 @@ unsigned int sr_render(void){
     glUniform1f(sr_c_loc, sr_c);
     glUniform1f(time_loc, camera.time);
 
-    glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
     glPointSize(3.0f);
     glDrawArrays(GL_POINTS, 0, wl_vbo_index);
 
     wl_vbo_index = 0; // Restart vertex buffer.
     longest_wl = 0;
 
+    return 0;
+}
+
+unsigned int sr_clear(void){
+    glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
     return 0;
 }
