@@ -4,13 +4,20 @@
 #include "gl_draw.h"
 
 #define WL_VBO_SIZE 32768
+#define WLS_BUFF_SIZE 1048576
+
+#define MAX_WL 63
 
 static camera_t camera;
 static float sr_c;
 
 static GLuint wl_vao;
 static GLuint wl_vbo;
+
 static unsigned int wl_vbo_index;
+static unsigned int longest_wl;
+
+static GLuint wls_buff;
 
 static int model_loc;
 static int proj_loc;
@@ -18,7 +25,16 @@ static int view_loc;
 static int sr_c_loc;
 static int time_loc;
 
+static int sr_c_comp_loc;
+static int time_comp_loc;
+static int wl_lens_loc;
+static int model_comp_loc;
+static int view_comp_loc;
+
 static float sr_c = 30.0f;
+
+static unsigned int shader_program;
+static unsigned int compute_program;
 
 /* CAMERA */
 void camera_init(void){
@@ -76,10 +92,10 @@ void camera_view_matrix( mat4 view ){
 
 
 /* INIT */
-int sr_draw_init( char* v_shader_str, char* f_shader_str ){
+int sr_draw_init( char* v_shader_str, char* f_shader_str, char* c_shader_str ){
     unsigned int v_shader;
     unsigned int f_shader;
-    unsigned int shader_program;
+    unsigned int c_shader;
     mat4 model;
     mat4 proj;
 
@@ -91,12 +107,24 @@ int sr_draw_init( char* v_shader_str, char* f_shader_str ){
     }
     printf("Loaded OpenGL %d.%d\n", GLAD_VERSION_MAJOR(version), GLAD_VERSION_MINOR(version));
 
+    //Load vertex computer program.
+    c_shader = load_shader( c_shader_str, GL_COMPUTE_SHADER );
+    if(!c_shader) return -1;
+    unsigned int c_shader_a[1];
+    c_shader_a[0] = c_shader;
+    compute_program = make_shader_program( c_shader_a, 1 );
+    glDeleteShader(c_shader);
+    if(!compute_program) return -1;
+
     // Load Shader Program
     v_shader = load_shader( v_shader_str, GL_VERTEX_SHADER );
     f_shader = load_shader( f_shader_str, GL_FRAGMENT_SHADER );
     if(!v_shader) return -1;
     if(!f_shader) return -1;
-    shader_program = make_shader_program( v_shader, f_shader );
+    unsigned int shaders[2];
+    shaders[0] = v_shader;
+    shaders[1] = f_shader;
+    shader_program = make_shader_program( shaders, 2 );
     glDeleteShader(v_shader);
     glDeleteShader(f_shader);
     if(!shader_program) return -1;
@@ -110,12 +138,22 @@ int sr_draw_init( char* v_shader_str, char* f_shader_str ){
     sr_c_loc = glGetUniformLocation(shader_program, "sr_c");
     time_loc = glGetUniformLocation(shader_program, "time");
 
+    // Compute program
+    model_comp_loc = glGetUniformLocation(compute_program, "model");
+    view_comp_loc = glGetUniformLocation(compute_program, "view");
+    sr_c_comp_loc = glGetUniformLocation(compute_program, "sr_c");
+    time_comp_loc = glGetUniformLocation(compute_program, "time");
+
     // Init static model and perspective.
     glm_mat4_identity(model);
     glUniformMatrix4fv(model_loc, 1, GL_FALSE, (float*)model);
     glm_perspective(glm_rad(45.0f), 1, 0.1f, 10000.0f, proj); 
     //glm_ortho(-400.0f, 400.0f, -200.0f, 200.0f, 1.0f, 1000.0f, proj);
     glUniformMatrix4fv(proj_loc, 1, GL_FALSE, (float*)proj);
+
+    glUseProgram(compute_program);
+    glUniformMatrix4fv(model_comp_loc, 1, GL_FALSE, (float*)model);
+    glUseProgram(shader_program);
 
     // Setup OpenGL state
     glViewport(0,0,800,800);
@@ -139,6 +177,12 @@ int sr_draw_init( char* v_shader_str, char* f_shader_str ){
 
     glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, sizeof(render_vert_t), (void*)( offsetof(render_vert_t, b) ) );  
     glEnableVertexAttribArray(1);
+
+
+    // Getting the computer buffer ready
+    glGenBuffers(1, &wls_buff);
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, wls_buff);
+    glBufferData(GL_SHADER_STORAGE_BUFFER, WLS_BUFF_SIZE, NULL, GL_DYNAMIC_READ);
                               
     return 0;
 }
@@ -163,14 +207,17 @@ unsigned int load_shader(char* str, GLenum type){
     return shader;
 }
 
-unsigned int make_shader_program( GLuint v_shader, GLuint f_shader ){
+unsigned int make_shader_program( GLuint shaders[], int num ){
     unsigned int shader_program;
     int success;
     char infoLog[512];
 
     shader_program = glCreateProgram();
-    glAttachShader(shader_program, v_shader);
-    glAttachShader(shader_program, f_shader);
+
+    for(int i=0; i<num; i++){
+        glAttachShader(shader_program, shaders[i]);
+    }
+
     glLinkProgram(shader_program);
 
     glGetProgramiv(shader_program, GL_LINK_STATUS, &success);
@@ -189,8 +236,13 @@ unsigned int make_shader_program( GLuint v_shader, GLuint f_shader ){
 float sr_interval( vec4 a, vec4 b ){
     vec4 diff;      // Difference
     glm_vec4_sub(b, a, diff);
+    
+    float t = diff[0];
+    float x = diff[1];
+    float y = diff[2];
+    float z = diff[3];
 
-    return pow(sr_c, 2.0)*pow(diff[0], 2.0) - pow(diff[1], 2.0) - pow(diff[2], 2.0) - pow(diff[3], 2.0);
+    return sr_c*sr_c*t*t - x*x - y*y - z*z;
 }
 
 unsigned int sr_draw_mesh(void){
@@ -200,35 +252,12 @@ unsigned int sr_draw_mesh(void){
 unsigned int sr_draw_wl( wl_t* wl ){
     render_vert_t render_vert;
 
-    /* Can i put this into a shader */
-    int assigned = 0; // Found suitable a and b?
-    for(unsigned int i=1; i<wl->vert_count; i++){
-        float intv_a;
-        float intv_b; 
-        vec4 camera_spacetime;
+    longest_wl = wl->vert_count > longest_wl ?  wl->vert_count : longest_wl;
 
-        camera_spacetime[0] = camera.time;
-        memcpy(&camera_spacetime[1], camera.position, sizeof(vec3));
-        
-        intv_a = sr_interval( camera_spacetime, wl->verticies[i-1] );
-        intv_b = sr_interval( camera_spacetime, wl->verticies[i] );
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, wls_buff);
+    glBufferSubData(GL_SHADER_STORAGE_BUFFER, wl_vbo_index*(MAX_WL+1)*sizeof(vec4), sizeof(int), &wl->vert_count );
+    glBufferSubData(GL_SHADER_STORAGE_BUFFER, (wl_vbo_index*(MAX_WL+1)+1)*sizeof(vec4), wl->vert_count*sizeof(vec4), wl->verticies );
 
-        // Ensure one of our verticies comes from behind the camera;
-        if( intv_a*intv_b < 0 && ( wl->verticies[i][0] < camera.time || wl->verticies[i-1][0] < camera.time) ){ // Different signs.
-            glm_vec4_copy(wl->verticies[i-1], render_vert.a);
-            glm_vec4_copy(wl->verticies[i], render_vert.b);
-            assigned = 1;
-        }
-    }
-
-    if(!assigned) return -1; // Not visible from current camera?
-                             // TODO: Check INFINITE
-
-    //printf("%f, %f, %f, %f\n", render_vert.a[0], render_vert.a[1], render_vert.a[2], render_vert.a[3]);
-    //printf("%f, %f, %f, %f\n", render_vert.b[0], render_vert.b[1], render_vert.b[2], render_vert.b[3]);
-
-    glBindBuffer(GL_ARRAY_BUFFER, wl_vbo);
-    glBufferSubData(GL_ARRAY_BUFFER, (GLintptr)(wl_vbo_index * sizeof(render_vert_t) ), sizeof(render_vert_t), &render_vert );
     wl_vbo_index++;
 
     return 0;
@@ -236,12 +265,25 @@ unsigned int sr_draw_wl( wl_t* wl ){
 
 unsigned int sr_render(void){
     mat4 view;
-
-    glBindVertexArray(wl_vao);
-    glBindBuffer(GL_ARRAY_BUFFER, wl_vbo);
-
     // Camera position setup;
     camera_view_matrix(view);
+
+    // WLs Compute
+    glUseProgram(compute_program);
+    glUniform1f(sr_c_comp_loc, sr_c);
+    glUniform1f(time_comp_loc, camera.time);
+    glUniformMatrix4fv(view_comp_loc, 1, GL_FALSE, (float*)view);
+
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, wls_buff);
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, wl_vbo);
+
+    glDispatchCompute(longest_wl, (wl_vbo_index+63)/64, 1);
+    glMemoryBarrier(GL_VERTEX_ATTRIB_ARRAY_BARRIER_BIT);
+
+    // Shader program
+    glUseProgram(shader_program);
+    glBindVertexArray(wl_vao);
+    glBindBuffer(GL_ARRAY_BUFFER, wl_vbo);
     glUniformMatrix4fv(view_loc, 1, GL_FALSE, (float*)view);
 
     // Set Speed of Light Uniform
@@ -253,6 +295,7 @@ unsigned int sr_render(void){
     glDrawArrays(GL_POINTS, 0, wl_vbo_index);
 
     wl_vbo_index = 0; // Restart vertex buffer.
-    
+    longest_wl = 0;
+
     return 0;
 }

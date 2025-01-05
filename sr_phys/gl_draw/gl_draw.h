@@ -12,11 +12,11 @@ struct camera_t {
 typedef struct camera_t camera_t;
 
 // Init functions.
-int sr_draw_init( char* v_shader_str, char* f_shader_str );
+int sr_draw_init( char* v_shader_str, char* f_shader_str, char* c_shader_str );
 
 // Load a shader of type from str
 unsigned int load_shader(char* str, GLenum type);
-unsigned int make_shader_program( GLuint v_shader, GLuint f_shader );
+unsigned int make_shader_program( GLuint shaders[], int num );
 
 void camera_init(void);
 void camera_set_time( float time );
