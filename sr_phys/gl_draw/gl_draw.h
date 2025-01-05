@@ -28,6 +28,18 @@ void camera_get_angle( float* pitch, float* yaw);
 void camera_look_direction(float pitch, float yaw, vec3 direction);
 void camera_view_matrix( mat4 view );
 
+GLuint sr_make_int_buffer( unsigned int vals[], unsigned int count );
+GLuint sr_make_vec4_buffer( vec4 vecs[], unsigned int count );
+unsigned int sr_render_mesh( 
+        unsigned int anchor_buff, 
+        unsigned int anchor_count,
+        unsigned int vbo_buff,      
+        unsigned int vbo_count,
+        unsigned int ebo_buff,
+        unsigned int ebo_count,
+        mat4 model
+    );
+
 /* Drawing Functions */
 typedef struct {
     vec4 a;
@@ -44,3 +56,4 @@ typedef struct {
 float sr_interval( vec4 a, vec4 b );
 unsigned int sr_draw_wl( wl_t* wl );
 unsigned int sr_render(void);
+unsigned int sr_clear(void);
