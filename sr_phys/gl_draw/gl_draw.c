@@ -1,23 +1,16 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "camera.h"
+
 #include "gl_draw.h"
 
-#define WL_VBO_SIZE 32768
-#define WLS_BUFF_SIZE 1048576
-
-#define MAX_WL 63
-
-static camera_t camera;
-static float sr_c;
+#define MAX_POINTS 1048
 
 static GLuint wl_vao;
-static GLuint wl_vbo;
 
-static unsigned int wl_vbo_index;
-static unsigned int longest_wl;
-
-static GLuint wls_buff;
+static GLuint points_buff;
+static int points_count;
 
 static int model_loc;
 static int proj_loc;
@@ -35,61 +28,6 @@ static float sr_c = 30.0f;
 
 static unsigned int shader_program;
 static unsigned int compute_program;
-
-/* CAMERA */
-void camera_init(void){
-    float up_a[] = {0.0f, 1.0f, 0.0f};
-    float pos_a[] = {0.0f, 0.0f, 0.0f};
-    glm_vec3_make(up_a, camera.up);
-    glm_vec3_make(pos_a, camera.position);
-    camera.pitch = glm_rad( 0.0f );
-    camera.yaw = glm_rad( -90.0f );
-    camera.time = 0.0f;
-}
-
-void camera_get_pos( vec3 pos ){
-    glm_vec3_copy( camera.position, pos );
-}
-
-void camera_set_pos( vec3 pos ){
-    glm_vec3_copy( pos, camera.position );
-}
-
-void camera_get_angle( float* pitch, float* yaw ){
-    *pitch = camera.pitch;
-    *yaw = camera.yaw;
-}
-
-void camera_set_angle( float pitch, float yaw ){
-    camera.pitch = pitch;
-    camera.yaw = yaw;
-}
-
-void camera_set_time( float t ){
-    camera.time = t;
-}
-
-float camera_get_time(void){
-    return camera.time;
-}
-
-void camera_look_direction(float pitch, float yaw, vec3 direction){
-    //if(pitch > 89.0f) pitch = 89.0f;
-    //if(pitch < -89.0f) pitch = -89.0f;
-    direction[0] = cos(yaw) * cos(pitch);
-    direction[1] = sin(pitch);
-    direction[2] = sin(yaw) * cos(pitch);
-    glm_normalize(direction);
-    //glm_vec3_scale(direction, -1.0, direction);
-}
-
-void camera_view_matrix( mat4 view ){
-    vec3 camera_dir;
-    camera_look_direction(camera.pitch, camera.yaw, camera_dir);
-    glm_look(camera.position, camera_dir, camera.up, view);
-}
-
-
 
 /* INIT */
 int sr_draw_init( char* v_shader_str, char* f_shader_str, char* c_shader_str ){
@@ -134,11 +72,10 @@ int sr_draw_init( char* v_shader_str, char* f_shader_str, char* c_shader_str ){
     model_loc = glGetUniformLocation(shader_program, "model");
     view_loc = glGetUniformLocation(shader_program, "view");
     proj_loc = glGetUniformLocation(shader_program, "projection");
-
     sr_c_loc = glGetUniformLocation(shader_program, "sr_c");
     time_loc = glGetUniformLocation(shader_program, "time");
 
-    // Compute program
+    // Compute program uniforms
     model_comp_loc = glGetUniformLocation(compute_program, "model");
     view_comp_loc = glGetUniformLocation(compute_program, "view");
     sr_c_comp_loc = glGetUniformLocation(compute_program, "sr_c");
@@ -149,7 +86,6 @@ int sr_draw_init( char* v_shader_str, char* f_shader_str, char* c_shader_str ){
     glm_mat4_identity(model);
     glUniformMatrix4fv(model_loc, 1, GL_FALSE, (float*)model);
     glm_perspective(glm_rad(45.0f), 1, 0.1f, 10000.0f, proj); 
-    //glm_ortho(-400.0f, 400.0f, -200.0f, 200.0f, 1.0f, 1000.0f, proj);
     glUniformMatrix4fv(proj_loc, 1, GL_FALSE, (float*)proj);
 
     glUseProgram(compute_program);
@@ -159,31 +95,31 @@ int sr_draw_init( char* v_shader_str, char* f_shader_str, char* c_shader_str ){
     // Setup OpenGL state
     glViewport(0,0,800,800);
     glClearColor( 1.0, 1.0, 1.0, 1.0 );
-    //glEnable(GL_DEPTH_TEST);
+    glEnable(GL_DEPTH_TEST);
+    glEnable(GL_CLIP_DISTANCE0);
 
-    // General wl buffer object
+    // Stray WL buffer.
+    glGenBuffers(1, &points_buff);
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, points_buff);
+    glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(render_vert_t)*MAX_POINTS, NULL, GL_STATIC_DRAW);
+    points_count = 0;
+
+    // VAO for wl
     glGenVertexArrays(1, &wl_vao);
     glBindVertexArray(wl_vao);
-
-    glGenBuffers(1, &wl_vbo); // Generate one buff to VBO    
-                              
-    glBindBuffer(GL_ARRAY_BUFFER, wl_vbo);
-
-    // Init empty vbo of size ### for wls.
-    glBufferData(GL_ARRAY_BUFFER, WL_VBO_SIZE, NULL, GL_DYNAMIC_DRAW);
-    wl_vbo_index = 0;
-
-    glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, sizeof(render_vert_t), (void*)( offsetof(render_vert_t, a) ) );  
+    glVertexAttribPointer(0, 4, 
+            GL_FLOAT, GL_FALSE, 
+            sizeof(render_vert_t), (void*)( offsetof(render_vert_t, a) ) 
+            );  
     glEnableVertexAttribArray(0);
 
-    glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, sizeof(render_vert_t), (void*)( offsetof(render_vert_t, b) ) );  
+    glVertexAttribPointer(1, 4, 
+            GL_FLOAT, GL_FALSE, 
+            sizeof(render_vert_t), (void*)( offsetof(render_vert_t, b) ) 
+            );  
     glEnableVertexAttribArray(1);
+    glBindVertexArray(0);
 
-
-    // Getting the computer buffer ready
-    glGenBuffers(1, &wls_buff);
-    glBindBuffer(GL_SHADER_STORAGE_BUFFER, wls_buff);
-    glBufferData(GL_SHADER_STORAGE_BUFFER, WLS_BUFF_SIZE, NULL, GL_DYNAMIC_READ);
                               
     return 0;
 }
@@ -250,16 +186,43 @@ unsigned int sr_draw_mesh(void){
     return 0;
 }
 
+// This is inefficient, but convenient for drawing one point (for diagnostics?)
 unsigned int sr_draw_wl( wl_t* wl ){
-    render_vert_t render_vert;
+    // Load wl.
+    GLuint wl_buff;
+    glGenBuffers(1, &wl_buff);
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, wl_buff);
+    glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(vec4)*wl->vert_count, (void*) wl->verticies, GL_STATIC_READ);
 
-    longest_wl = wl->vert_count > longest_wl ?  wl->vert_count : longest_wl;
+    // Init a length 1 zero offset buffer
+    vec4 zero_offset = GLM_VEC4_ZERO_INIT;
+    GLuint offset_buff;
+    glGenBuffers(1, &offset_buff);
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, offset_buff);
+    glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(vec4), (void*) zero_offset, GL_STATIC_READ);
 
-    glBindBuffer(GL_SHADER_STORAGE_BUFFER, wls_buff);
-    glBufferSubData(GL_SHADER_STORAGE_BUFFER, wl_vbo_index*(MAX_WL+1)*sizeof(vec4), sizeof(int), &wl->vert_count );
-    glBufferSubData(GL_SHADER_STORAGE_BUFFER, (wl_vbo_index*(MAX_WL+1)+1)*sizeof(vec4), wl->vert_count*sizeof(vec4), wl->verticies );
+    glUseProgram(compute_program);
 
-    wl_vbo_index++;
+    // Setup Uniforms
+    mat4 view;
+    camera_view_matrix(view);
+    mat4 model = GLM_MAT4_IDENTITY_INIT;
+    
+    glUniform1f(sr_c_comp_loc, sr_c);
+    glUniform1f(time_comp_loc, camera_get_time());
+    glUniformMatrix4fv(view_comp_loc, 1, GL_FALSE, (float*)view);
+    glUniformMatrix4fv(model_comp_loc, 1, GL_FALSE, (float*)model);
+    glUniform1ui(vbo_comp_offset_loc, points_count);
+
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, wl_buff);
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, points_buff);
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 3, offset_buff);
+
+    glDispatchCompute(wl->vert_count, 1, 1);
+
+    glDeleteBuffers(1, &wl_buff);
+    glDeleteBuffers(1, &offset_buff);
+    points_count++;
 
     return 0;
 }
@@ -298,7 +261,7 @@ unsigned int sr_render_mesh(
     glUseProgram(compute_program);
 
     glUniform1f(sr_c_comp_loc, sr_c);
-    glUniform1f(time_comp_loc, camera.time);
+    glUniform1f(time_comp_loc, camera_get_time());
     glUniform1ui(vbo_comp_offset_loc, 0);
 
     glUniformMatrix4fv(view_comp_loc, 1, GL_FALSE, (float*)view);
@@ -337,7 +300,7 @@ unsigned int sr_render_mesh(
     glm_mat4_identity(identity);
     glUniformMatrix4fv(model_loc, 1, GL_FALSE, (float*)identity);
     glUniform1f(sr_c_loc, sr_c);
-    glUniform1f(time_loc, camera.time);
+    glUniform1f(time_loc, camera_get_time());
 
     glDrawElements(GL_TRIANGLES, ebo_count, GL_UNSIGNED_INT, 0);
 
@@ -347,39 +310,40 @@ unsigned int sr_render_mesh(
 }
 
 unsigned int sr_render(void){
-    return 0;
+    mat4 model = GLM_MAT4_IDENTITY_INIT;
     mat4 view;
-    // Camera position setup;
     camera_view_matrix(view);
-
-    // WLs Compute
-    glUseProgram(compute_program);
-    glUniform1f(sr_c_comp_loc, sr_c);
-    glUniform1f(time_comp_loc, camera.time);
-    glUniformMatrix4fv(view_comp_loc, 1, GL_FALSE, (float*)view);
-
-    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, wls_buff);
-    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, wl_vbo);
-
-    glDispatchCompute(longest_wl, (wl_vbo_index+63)/64, 1);
-    glMemoryBarrier(GL_VERTEX_ATTRIB_ARRAY_BARRIER_BIT);
 
     // Shader program
     glUseProgram(shader_program);
-    glBindVertexArray(wl_vao);
-    glBindBuffer(GL_ARRAY_BUFFER, wl_vbo);
+
+    // Setup uniforms
+    glUniform1f(sr_c_loc, sr_c);
+    glUniform1f(time_loc, camera_get_time());
+    glUniformMatrix4fv(model_loc, 1, GL_FALSE, (float*)model);
     glUniformMatrix4fv(view_loc, 1, GL_FALSE, (float*)view);
 
-    // Set Speed of Light Uniform
-    glUniform1f(sr_c_loc, sr_c);
-    glUniform1f(time_loc, camera.time);
+    glBindBuffer(GL_ARRAY_BUFFER, points_buff);
+    glBindVertexArray(wl_vao);
+    glVertexAttribPointer(0, 4, 
+            GL_FLOAT, GL_FALSE, 
+            sizeof(render_vert_t), (void*)( offsetof(render_vert_t, a) ) 
+            );  
+    glEnableVertexAttribArray(0);
+
+    glVertexAttribPointer(1, 4, 
+            GL_FLOAT, GL_FALSE, 
+            sizeof(render_vert_t), (void*)( offsetof(render_vert_t, b) ) 
+            );  
+    glEnableVertexAttribArray(1);
 
     glPointSize(3.0f);
-    glDrawArrays(GL_POINTS, 0, wl_vbo_index);
 
-    wl_vbo_index = 0; // Restart vertex buffer.
-    longest_wl = 0;
+    glMemoryBarrier(GL_VERTEX_ATTRIB_ARRAY_BARRIER_BIT); // Ensure all computes have finished
+                                                        
+    glDrawArrays(GL_POINTS, 0, points_count);
 
+    points_count = 0;
     return 0;
 }
 

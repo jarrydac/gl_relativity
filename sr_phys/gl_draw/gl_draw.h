@@ -1,15 +1,6 @@
 #include "include/glad/gl.h"
 #include "include/cglm/cglm.h"
 
-struct camera_t {
-    float time;
-    vec3 position;
-    float pitch;
-    float yaw;
-    vec3 up;
-};
-
-typedef struct camera_t camera_t;
 
 // Init functions.
 int sr_draw_init( char* v_shader_str, char* f_shader_str, char* c_shader_str );
@@ -18,15 +9,6 @@ int sr_draw_init( char* v_shader_str, char* f_shader_str, char* c_shader_str );
 unsigned int load_shader(char* str, GLenum type);
 unsigned int make_shader_program( GLuint shaders[], int num );
 
-void camera_init(void);
-void camera_set_time( float time );
-void camera_set_pos( vec3 pos );
-void camera_set_angle( float pitch, float yaw );
-float camera_get_time(void);
-void camera_get_pos( vec3 pos );
-void camera_get_angle( float* pitch, float* yaw);
-void camera_look_direction(float pitch, float yaw, vec3 direction);
-void camera_view_matrix( mat4 view );
 
 GLuint sr_make_int_buffer( unsigned int vals[], unsigned int count );
 GLuint sr_make_vec4_buffer( vec4 vecs[], unsigned int count );
