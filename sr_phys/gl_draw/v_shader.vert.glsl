@@ -31,7 +31,7 @@ void main(){
     float t1;
     float t2;
 
-    // Make a the lowest t point.
+    // We will use a->b not b->a
     if(a_st.x < b_st.x){
         a = (view*model*vec4(a_st.yzw, 1.0)).xyz;
         b = (view*model*vec4(b_st.yzw, 1.0)).xyz;
@@ -56,9 +56,10 @@ void main(){
 
     intv = B*B - 4.0*A*C;
 
+    float intv_a = sr_c*sr_c*t_a*t_a - dot(a,a);
+    float intv_b = sr_c*sr_c*t_b*t_b - dot(b,b);
+
     if(intv < 0){
-        float intv_a = sr_c*sr_c*t_a*t_a - dot(a,a);
-        float intv_b = sr_c*sr_c*t_b*t_b - dot(b,b);
         s = a*0.5f + b*0.5f;
         color = vec3(0.5,intv_a,intv_b);
         gl_Position = projection * vec4(s, 1.0);
@@ -69,7 +70,6 @@ void main(){
     t2 = ( -B + sqrt( intv ) ) / (2.0*A);
 
     // We want the largest (most recent) negative time.
-
     if(t1 < t2){
         t = t2<0 ? t2 : t1;    
     }else{
@@ -79,5 +79,6 @@ void main(){
     s = (1/(t_b-t_a)) * ( a*(t_b-t) + b*(t-t_a) ); // This is the line equation.
     
     gl_Position = projection * vec4(s, 1.0);
+
     color = vec3(0.0f, 0.0f, 0.0f);
 }
