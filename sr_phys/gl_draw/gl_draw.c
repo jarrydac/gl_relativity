@@ -29,6 +29,21 @@ static float sr_c = 30.0f;
 static unsigned int shader_program;
 static unsigned int compute_program;
 
+void render_vert_binds(void){
+    glBindVertexArray(wl_vao);
+    glVertexAttribPointer(0, 4, 
+            GL_FLOAT, GL_FALSE, 
+            sizeof(render_vert_t), (void*)( offsetof(render_vert_t, pos) ) 
+            );  
+    glEnableVertexAttribArray(0);
+
+    glVertexAttribPointer(1, 1, 
+            GL_FLOAT, GL_FALSE, 
+            sizeof(render_vert_t), (void*)( offsetof(render_vert_t, interval) ) 
+            );  
+    glEnableVertexAttribArray(1);
+}
+
 /* INIT */
 int sr_draw_init( char* v_shader_str, char* f_shader_str, char* c_shader_str ){
     unsigned int v_shader;
@@ -97,6 +112,8 @@ int sr_draw_init( char* v_shader_str, char* f_shader_str, char* c_shader_str ){
     glClearColor( 1.0, 1.0, 1.0, 1.0 );
     glEnable(GL_DEPTH_TEST);
     glEnable(GL_CLIP_DISTANCE0);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    glEnable( GL_BLEND );
 
     // Stray WL buffer.
     glGenBuffers(1, &points_buff);
@@ -107,17 +124,7 @@ int sr_draw_init( char* v_shader_str, char* f_shader_str, char* c_shader_str ){
     // VAO for wl
     glGenVertexArrays(1, &wl_vao);
     glBindVertexArray(wl_vao);
-    glVertexAttribPointer(0, 4, 
-            GL_FLOAT, GL_FALSE, 
-            sizeof(render_vert_t), (void*)( offsetof(render_vert_t, a) ) 
-            );  
-    glEnableVertexAttribArray(0);
-
-    glVertexAttribPointer(1, 4, 
-            GL_FLOAT, GL_FALSE, 
-            sizeof(render_vert_t), (void*)( offsetof(render_vert_t, b) ) 
-            );  
-    glEnableVertexAttribArray(1);
+    render_vert_binds();
     glBindVertexArray(0);
 
                               
@@ -272,16 +279,7 @@ unsigned int sr_render_mesh(
     glBindBuffer(GL_ARRAY_BUFFER, draw_buff);
     glBindVertexArray(wl_vao);
     glBufferData(GL_ARRAY_BUFFER, vbo_count*sizeof(render_vert_t), NULL, GL_STATIC_DRAW);
-    glVertexAttribPointer(0, 4, 
-            GL_FLOAT, GL_FALSE, 
-            sizeof(render_vert_t), (void*)( offsetof(render_vert_t, a) ) 
-            );  
-    glEnableVertexAttribArray(0);
-    glVertexAttribPointer(1, 4, 
-            GL_FLOAT, GL_FALSE, 
-            sizeof(render_vert_t), (void*)( offsetof(render_vert_t, b) ) 
-            );  
-    glEnableVertexAttribArray(1);
+    render_vert_binds();
 
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, anchor_buff);
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, draw_buff);
@@ -323,27 +321,19 @@ unsigned int sr_render(void){
     glUniformMatrix4fv(model_loc, 1, GL_FALSE, (float*)model);
     glUniformMatrix4fv(view_loc, 1, GL_FALSE, (float*)view);
 
+    glMemoryBarrier(GL_VERTEX_ATTRIB_ARRAY_BARRIER_BIT); // Ensure all computes have finished
     glBindBuffer(GL_ARRAY_BUFFER, points_buff);
     glBindVertexArray(wl_vao);
-    glVertexAttribPointer(0, 4, 
-            GL_FLOAT, GL_FALSE, 
-            sizeof(render_vert_t), (void*)( offsetof(render_vert_t, a) ) 
-            );  
-    glEnableVertexAttribArray(0);
-
-    glVertexAttribPointer(1, 4, 
-            GL_FLOAT, GL_FALSE, 
-            sizeof(render_vert_t), (void*)( offsetof(render_vert_t, b) ) 
-            );  
-    glEnableVertexAttribArray(1);
-
+    render_vert_binds();
     glPointSize(3.0f);
 
-    glMemoryBarrier(GL_VERTEX_ATTRIB_ARRAY_BARRIER_BIT); // Ensure all computes have finished
                                                         
     glDrawArrays(GL_POINTS, 0, points_count);
 
     points_count = 0;
+
+    printf("Error code: %d\n", glGetError());
+
     return 0;
 }
 
