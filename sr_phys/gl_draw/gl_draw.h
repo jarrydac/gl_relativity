@@ -24,8 +24,9 @@ unsigned int sr_render_mesh(
 
 /* Drawing Functions */
 typedef struct {
-    vec4 a;
-    vec4 b;
+    vec4 pos;
+    float interval;
+    float padding[3];
 } render_vert_t;
 
 typedef enum { FINITE, INFINITE } finite_opt;
