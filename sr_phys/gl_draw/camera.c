@@ -1,6 +1,7 @@
 #include "camera.h"
 
 static struct  {
+    float c;
     float time;
     vec3 position;
     float pitch;
@@ -40,6 +41,14 @@ void camera_set_time( float t ){
 
 float camera_get_time(void){
     return camera.time;
+}
+
+void camera_set_c( float c ){
+    camera.c = c;
+}
+
+float camera_get_c(void){
+    return camera.c;
 }
 
 void camera_look_direction(float pitch, float yaw, vec3 direction){
