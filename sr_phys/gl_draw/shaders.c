@@ -58,7 +58,7 @@ int sr_shaders_init( char* vertex_shader_src, char* fragment_shader_src ){
 
     // Create static matricies
     glm_mat4_identity(obj_model_ident);
-    glm_perspective(glm_rad(45.0f), 1, 0.1f, 10000.0f, obj_proj_mat); 
+    glm_perspective(glm_rad(45.0f), 1, 0.1f, 600.0f, obj_proj_mat); 
 
     return 0;
 }
@@ -83,7 +83,7 @@ int sr_load_shader( sr_shader* shader ){
     return 0;
 }
 
-GLuint make_shader_program( sr_shader* shaders, int num ){
+GLuint sr_link_program( sr_shader* shaders, int num ){
     GLuint program;
     int success;
     char infoLog[512];
@@ -105,16 +105,16 @@ GLuint make_shader_program( sr_shader* shaders, int num ){
     return program;
 }
 
-void sr_use_obj_program(void){
+void sr_use_obj_program( mat4 model ){
     glUseProgram(obj_program);
 
     glUniform1f(obj_program_uniforms.c, camera_get_c());
     glUniform1f(obj_program_uniforms.t, camera_get_time());
-    glUniformMatrix4fv(obj_program_uniforms.model, 1, GL_FALSE, (float*)obj_model_ident);
     glUniformMatrix4fv(obj_program_uniforms.proj, 1, GL_FALSE, (float*)obj_proj_mat);
 
     mat4 view;
     camera_view_matrix( view );
     glUniformMatrix4fv(obj_program_uniforms.view, 1, GL_FALSE, (float*)view);
 
+    glUniformMatrix4fv(obj_program_uniforms.model, 1, GL_FALSE, (float*)model);
 }

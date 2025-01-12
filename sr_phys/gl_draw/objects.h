@@ -26,7 +26,7 @@ typedef struct {
 
 typedef struct {
     unsigned int anchor_wl;
-    unsigned int anchol_wl_len;
+    unsigned int anchor_wl_len;
     unsigned int vbo_id;
     unsigned int ebo_id;
     unsigned int vao_id;
