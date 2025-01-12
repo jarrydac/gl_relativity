@@ -2,10 +2,6 @@
 
 #include <stdio.h>
 
-#include "shaders.h"
-#include "camera.h"
-#include "objects.h"
-
 int sr_draw_init( char* v_shader_str, char* f_shader_str, char* c_shader_str ){
 
     // GLAD Init.
@@ -32,37 +28,12 @@ int sr_draw_init( char* v_shader_str, char* f_shader_str, char* c_shader_str ){
     return 0;
 }
 
-
-unsigned int sr_draw_mesh(void){
-    return 0;
-}
-
-// This is inefficient, but convenient for drawing one point (for diagnostics?)
-typedef void wl_t; 
-unsigned int sr_draw_wl( wl_t* wl ){
-    return 0;
-    // Redo this.
-}
-
-unsigned int sr_render_mesh( 
-        unsigned int anchor_buff, 
-        unsigned int anchor_count,
-        unsigned int vbo_buff,      // Vertex offsets from anchor
-        unsigned int vbo_count,
-        unsigned int ebo_buff,
-        unsigned int ebo_count,
-        mat4 model
-    ){
-    // Supercededed by objects.h
-    return 0;
-}
-
 unsigned int sr_render(void){
-    // Redo this.
     return 0;
 }
 
-unsigned int sr_clear(void){
+void sr_clear(void){
     glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
-    return 0;
 }
+
+void sr_close(void); // TODO

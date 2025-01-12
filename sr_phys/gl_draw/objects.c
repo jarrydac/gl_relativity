@@ -17,6 +17,7 @@ void sr_objects_init(void){
 
     glActiveTexture(WLS_UNIT);
     glBindTexture(GL_TEXTURE_2D, wls_tex);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0);
     glTexImage2D(GL_TEXTURE_2D, 
             0, GL_RGBA32F, 
             MAX_WL_LEN, MAX_WL_NUM, 
@@ -25,10 +26,11 @@ void sr_objects_init(void){
 
     glActiveTexture(WL_LENS_UNIT);
     glBindTexture(GL_TEXTURE_1D, wl_lens_tex);
+    glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_MAX_LEVEL, 0);
     glTexImage1D(GL_TEXTURE_1D, 
             0, GL_R32I, 
             MAX_WL_NUM, 
-            0, GL_R, GL_INT, NULL
+            0, GL_RED_INTEGER, GL_INT, NULL
             );
 }
 
@@ -43,7 +45,7 @@ void sr_objects_close(void){
 int sr_object_init( sr_object* object, sr_obj_wl* wl, sr_obj_mesh* mesh, mat4 model ){
     if(wls_count >= MAX_WL_NUM) return 1;   // TO MANY WLS.
     object->anchor_wl = wls_count++;        // Select next avaliable position TODO: manage free'd indicies
-    sr_object_update_mesh( object, mesh );
+    sr_object_update_wl( object, wl );
 
     object->vbo_id = 0; // Initialise to 0, to show undeclared.
     object->ebo_id = 0;
@@ -77,8 +79,8 @@ void sr_object_update_wl( sr_object* object, sr_obj_wl* wl ){
             0, 
             object->anchor_wl, 
             1,
-            GL_R, GL_INT,
-            &wl->length
+            GL_RED_INTEGER, GL_INT,
+            &(wl->length)
         );
 }           
                                                                         
@@ -87,40 +89,40 @@ int sr_object_update_mesh( sr_object* object, sr_obj_mesh* mesh ){
     if( object->vao_id ) glDeleteVertexArrays(1, &object->vao_id );
     glGenVertexArrays(1, &object->vao_id);
     glBindVertexArray(object->vao_id);
-    glVertexAttribPointer( 0, 4, 
-            GL_FLOAT, GL_FALSE, 
-            sizeof( sr_obj_render_vert ), 
-            (void*) offsetof( sr_obj_render_vert, offset ) 
-        );
-    glVertexAttribIPointer( 1, 4, 
-            GL_FLOAT,  
-            sizeof( sr_obj_render_vert ), 
-            (void*) offsetof( sr_obj_render_vert, wl_index ) 
-        );
-    
-    glEnableVertexAttribArray(0);
-    glEnableVertexAttribArray(1);
 
     // EBO
     if( object->ebo_id ) glDeleteBuffers(1, &object->ebo_id );
     glGenBuffers(1, &object->ebo_id);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, object->ebo_id);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, mesh->indicies_len * sizeof(int), mesh->indicies, GL_STATIC_DRAW);
-    object->elements_count = mesh->indicies_len/3;
+    object->elements_count = mesh->indicies_len;
     
     // VBO
     sr_obj_render_vert* verts = (sr_obj_render_vert*) malloc( sizeof(sr_obj_render_vert) * mesh->offsets_len );
     if(verts == NULL) return -1;
 
     for(int i=0; i<mesh->offsets_len; i++){
-        glm_vec3_copy(mesh->offsets[i], verts[i].offset);
+        glm_vec4_copy(mesh->offsets[i], verts[i].offset);
         verts[i].wl_index = object->anchor_wl;
     }
        
     if( object->vbo_id ) glDeleteBuffers(1, &object->vbo_id ); // Only delete the buffer after malloc
     glGenBuffers(1, &object->vbo_id);
-    glBindBuffer(GL_ARRAY_BUFFER, object->ebo_id);
+    glBindBuffer(GL_ARRAY_BUFFER, object->vbo_id);
     glBufferData(GL_ARRAY_BUFFER, mesh->offsets_len * sizeof(sr_obj_render_vert), verts, GL_STATIC_DRAW);
+
+    glVertexAttribPointer( 0, 4, 
+            GL_FLOAT, GL_FALSE, 
+            sizeof( sr_obj_render_vert ), 
+            (void*) offsetof( sr_obj_render_vert, offset ) 
+        );
+    glEnableVertexAttribArray(0);
+    glVertexAttribIPointer( 1, 1, 
+            GL_INT,  
+            sizeof( sr_obj_render_vert ), 
+            (void*) offsetof( sr_obj_render_vert, wl_index ) 
+        );
+    glEnableVertexAttribArray(1);
 
     glBindVertexArray(0); // I dont trust myself.
     free(verts);
@@ -133,7 +135,7 @@ void sr_object_update_model( sr_object* object, mat4 model ){
 }    
 
 void sr_object_draw( sr_object* object ){
-    sr_use_obj_program();
+    sr_use_obj_program( object->model );
 
     glActiveTexture(WLS_UNIT);
     glBindTexture(GL_TEXTURE_2D, wls_tex);
