@@ -25,9 +25,42 @@ float interval( vec4 a ){
     return sr_c*sr_c*t*t - x*x - y*y - z*z;
 }
 
+float[2] intersections( vec4 a, vec4 b ){
+    float[2] t = {99,99};
+
+    // Quadratic Quants
+    float intv;
+    float A;
+    float B;
+    float C;
+
+    float aa = dot(a,a);
+    float ab = dot(a,b);
+    float bb = dot(b,b);
+
+    float fact = 1.0/( (b.x-a.x)*(b.x-a.x) );
+
+    A = fact*(aa -2.0*ab + bb) - sr_c*sr_c;
+    B = -2.0*fact*(aa*a.x - ab*(a.x+b.x) + bb*a.x);
+    C = fact*(aa*b.x*b.x - 2.0*ab*a.x*b.x + bb*a.x*a.x); 
+
+    intv = B*B - 4.0*A*C;
+
+    // Logical non-starter
+    if(intv < 0) return t; // Dies silently
+
+    t[0] = ( -B - sqrt( intv ) ) / (2.0*A);
+    t[1] = ( -B + sqrt( intv ) ) / (2.0*A); // N.B t2 is larger than t1
+
+    return t;
+}
+
+vec4 line( vec4 a, vec4 b, float t ){
+    return (1.0/(b.x-a.x)) * ( a*(b.x-t) + b*(t-a.x) ); // This is the line equation.
+}
+
 void main(){
     vec4[MAX_WL_LEN] wl;
-
     int wl_len = texelFetch(wl_lens, wl_index, 0).r;
 
     for(uint i=0; i<wl_len; i++) wl[i] = texelFetch(wls, ivec2(i, wl_index), 0);
@@ -35,17 +68,24 @@ void main(){
     vec3 scaled_offset = (model*vec4(wl_offset.yzw, 1.0)).xyz;
 
     struct {
-        vec4 pos;
+        vec4 a;
+        vec4 b;
+        float score;
+        float t;
     } vertex;
 
+    vec4 s;
+    float t;
+
+    vertex.score = 0;
+
     for(uint i=1; i<wl_len; i++){ // Start at i=1, use i-1;
+        // TRANSFORMS
         vec4 a_world = wl[i-1] + vec4(0.0, scaled_offset); // World coords.
         vec4 b_world = wl[i] + vec4(0.0, scaled_offset);
 
         vec4 a = vec4(a_world.x-time, (view*vec4(a_world.yzw, 1.0)).xyz); // Camera coords
         vec4 b = vec4(b_world.x-time, (view*vec4(b_world.yzw, 1.0)).xyz);
-
-        // TODO: Apply lorentz.
 
         if( a.x > b.x ){
             // Swap, so we habe the a to b seg
@@ -55,45 +95,35 @@ void main(){
             b = tmp;
         }
 
-        // Quadratic Quants
-        float intv;
-        float A;
-        float B;
-        float C;
+        if(!( (interval(a) * interval(b) < 0) && (a.x<0 || b.x<0) )) return;
 
-        vec3 s;
-        float t;
-        float t1;
-        float t2;
+        // TODO: Apply lorentz.
+        float t[2] = intersections(a,b);
+        
+        float t_0 = 0;
 
-        float aa = dot(a,a);
-        float ab = dot(a,b);
-        float bb = dot(b,b);
+        if(t[0]<0) t_0 = t[0];
+        if(t[1]<0) t_0 = t[1];
 
-        float fact = 1/( (b.x-a.x)*(b.x-a.x) );
-
-        A = fact*(aa -2.0*ab + bb) - sr_c*sr_c;
-        B = -2.0*fact*(aa*a.x - ab*(a.x+b.x) + bb*a.x);
-        C = fact*(aa*b.x*b.x - 2.0*ab*a.x*b.x + bb*a.x*a.x); 
-
-        intv = B*B - 4.0*A*C;
-
-        t1 = ( -B - sqrt( intv ) ) / (2.0*A);
-        t2 = ( -B + sqrt( intv ) ) / (2.0*A); // N.B t2 is larger than t1
-
-        // Logical non-starters
-        if(intv < 0) return; // Dies silently
-        //if( t1 > 0 && t2 > 0 ) return;
-        //if( t1 < 0 && t2 < 0 ) return;
-
-        if( t1<0 ) t=t1;
-        if( t2<0 ) t=t2;
-
-        s = (1/(b.x-a.x)) * ( a.yzw*(b.x-t) + b.yzw*(t-a.x) ); // This is the line equation.
-
-        vertex.pos = vec4(0.0, s);
+        if(t_0>a.x && t_0<b.x && t_0!=0){
+            float score = 1.0/( abs(interval(a)) + abs(interval(b)) );
+            if( score > vertex.score ){
+                vertex.a = a;
+                vertex.b = b;
+                vertex.t = t_0;
+                vertex.score = score;
+            }
+        }
     }
 
-    gl_Position = projection * vec4(vertex.pos.yzw, 1.0);
-    color = vec3(0.0f, 0.0f, 0.0f);
+    if(vertex.score != 0){
+        s = line( vertex.a, vertex.b, vertex.t );
+        t = vertex.t;
+
+        gl_Position = projection * vec4(s.yzw, 1.0);
+        color = vec3(0.0f, 0.0f, 0.0f);
+    }else{
+        gl_Position = vec4(0.0,0.0,0.0,1.0);
+        color = vec3(1.0f, 0.0f, 0.0f);
+    }
 }
