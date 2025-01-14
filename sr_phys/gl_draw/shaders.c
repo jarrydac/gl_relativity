@@ -58,7 +58,7 @@ int sr_shaders_init( char* vertex_shader_src, char* fragment_shader_src ){
 
     // Create static matricies
     glm_mat4_identity(obj_model_ident);
-    glm_perspective(glm_rad(45.0f), 1, 0.1f, 600.0f, obj_proj_mat); 
+    glm_perspective(glm_rad(45.0f), 1, 0.1f, 1000.0f, obj_proj_mat); 
 
     return 0;
 }
