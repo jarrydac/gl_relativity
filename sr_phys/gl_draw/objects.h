@@ -16,11 +16,7 @@ typedef struct {
 
 typedef struct {
     unsigned int anchor_wl;
-    unsigned int anchor_wl_len;
-    unsigned int vbo_id;
-    unsigned int ebo_id;
-    unsigned int vao_id;
-    unsigned int elements_count;
+    sr_mesh* mesh;
     mat4 model;
 } sr_object;
 

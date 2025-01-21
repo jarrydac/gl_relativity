@@ -22,7 +22,7 @@ int sr_init_mesh(
         int offsets_len
     );
 
-void sr_load_mesh(sr_mesh*, char* file);
 void sr_delete_mesh(sr_mesh*);
+
 
 #endif

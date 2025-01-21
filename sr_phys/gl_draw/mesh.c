@@ -1,7 +1,5 @@
 #include "include/glad/gl.h"
 
-#include <assimp/cimport.h>
-
 #include "mesh.h"
 
 int sr_init_mesh(
@@ -37,12 +35,6 @@ int sr_init_mesh(
     glBindVertexArray(0); // I dont trust myself.
 
     return 0;
-}
-
-void sr_load_mesh(sr_mesh* mesh, char* file){
-    sr_mesh_vert* verts;
-    int* indicies; 
-
 }
 
 void sr_delete_mesh(sr_mesh* mesh){
