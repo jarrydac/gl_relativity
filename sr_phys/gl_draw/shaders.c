@@ -12,6 +12,7 @@ static struct {
     int proj;
     int t;
     int c;
+    int wl_id;
 } obj_program_uniforms;
 
 static mat4 obj_model_ident;
@@ -55,6 +56,7 @@ int sr_shaders_init( char* vertex_shader_src, char* fragment_shader_src ){
     obj_program_uniforms.proj = glGetUniformLocation(obj_program, "projection");
     obj_program_uniforms.c = glGetUniformLocation(obj_program, "sr_c");
     obj_program_uniforms.t = glGetUniformLocation(obj_program, "time");
+    obj_program_uniforms.wl_id = glGetUniformLocation(obj_program, "wl_index");
 
     // Create static matricies
     glm_mat4_identity(obj_model_ident);
@@ -105,12 +107,14 @@ GLuint sr_link_program( sr_shader* shaders, int num ){
     return program;
 }
 
-void sr_use_obj_program( mat4 model ){
+void sr_use_obj_program( mat4 model, unsigned int wl_id ){
     glUseProgram(obj_program);
 
     glUniform1f(obj_program_uniforms.c, camera_get_c());
     glUniform1f(obj_program_uniforms.t, camera_get_time());
     glUniformMatrix4fv(obj_program_uniforms.proj, 1, GL_FALSE, (float*)obj_proj_mat);
+
+    glUniform1ui(obj_program_uniforms.wl_id, wl_id);
 
     mat4 view;
     camera_view_matrix( view );

@@ -3,7 +3,6 @@
 #define MAX_WL_LEN 128
 
 layout (location = 0) in vec4 wl_offset;
-layout (location = 1) in int wl_index;
 
 layout (binding=0) uniform sampler2D wls;
 layout (binding=1) uniform isampler1D wl_lens;
@@ -16,6 +15,8 @@ out vec4 start;
 out vec4 end;
 
 out float intv_neg;
+
+uniform uint wl_index;
 
 uniform float sr_c;
 uniform float time;
@@ -42,7 +43,7 @@ void main(){
     color = vec3(0.0,0.0,1.0);
 
     vec4[MAX_WL_LEN] wl;
-    wl_len = texelFetch(wl_lens, wl_index, 0).r;
+    wl_len = texelFetch(wl_lens, int( wl_index), 0).r;
     for(uint i=0; i<wl_len; i++) wl[i] = texelFetch(wls, ivec2(i, wl_index), 0);
 
     vec4 scaled_offset = vec4(0.0, (model*vec4(wl_offset.yzw,1.0)).xyz);
