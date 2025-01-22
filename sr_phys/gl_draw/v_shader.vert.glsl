@@ -8,13 +8,7 @@ layout (binding=0) uniform sampler2D wls;
 layout (binding=1) uniform isampler1D wl_lens;
 
 out vec3 color;
-
 out int wl_len;
-
-out vec4 start;
-out vec4 end;
-
-out float intv_neg;
 
 uniform uint wl_index;
 
@@ -48,11 +42,9 @@ void main(){
 
     vec4 scaled_offset = vec4(0.0, (model*vec4(wl_offset.yzw,1.0)).xyz);
 
-    intv_neg=0;
-
     // Infinite Extents
-    start = transform(wl[0], scaled_offset.yzw);
-    end = transform(wl[wl_len-1], scaled_offset.yzw);
+    vec4 start = transform(wl[0], scaled_offset.yzw);
+    vec4 end = transform(wl[wl_len-1], scaled_offset.yzw);
     if( start.x > end.x ){
         vec4 tmp;
         tmp = start;
@@ -60,14 +52,14 @@ void main(){
         end = tmp;
     }
 
-    float t_end = sqrt( dot(end, end) / (sr_c*sr_c) );
+    float t_end = -sqrt( dot(end.yzw, end.yzw) / (sr_c*sr_c) ); // This should be negetive, we're looking into the past??
     if(t_end > end.x){
         gl_Position = projection*vec4(end.yzw, 1.0); 
         color = vec3(1.0,0.0,0.0);
         return;
     }
 
-    float t_start = -sqrt( dot(start, start) / (sr_c*sr_c) );
+    float t_start = -sqrt( dot(start.yzw, start.yzw) / (sr_c*sr_c) );
     if(t_start < start.x){
         gl_Position = projection*vec4(start.yzw, 1.0); 
         color = vec3(0.0,1.0,0.0);
@@ -93,22 +85,23 @@ void main(){
         float B;
         float C;
 
-        float aa = dot(a.yzw,a.yzw);
-        float ab = dot(a.yzw,b.yzw);
-        float bb = dot(b.yzw,b.yzw);
 
+        // Had to repeat this analysis, but it appears correct now
+        // use s = ( 1/(t_b-t_a) )*( a*(t_b-t) + b*(t-t_a) )
+        // and (c*t)**2 = dot(s,s);
+        // N.B factor out t first!
         float fact = 1.0/( (b.x-a.x)*(b.x-a.x) );
-
-        A = fact*(aa -2.0*ab + bb) - sr_c*sr_c;
-        B = -2.0*fact*(aa*a.x - ab*(a.x+b.x) + bb*a.x);
-        C = fact*(aa*b.x*b.x - 2.0*ab*a.x*b.x + bb*a.x*a.x); 
+        A = fact*dot(b.yzw-a.yzw, b.yzw-a.yzw) - sr_c*sr_c;
+        B = fact*2.0*dot(a.yzw*b.x - b.yzw*a.x, b.yzw-a.yzw);
+        C = fact*dot(a.yzw*b.x-b.yzw*a.x,a.yzw*b.x-b.yzw*a.x);
 
         intv =  B*B - 4.0*A*C;
 
-        // Logical non-starter
+        // We need interval to be positive
         if(intv > 0){ 
+            // https://math.stackexchange.com/questions/311382/solving-a-quadratic-equation-with-precision-when-using-floating-point-variables
             t[0] = float( ( -B - sqrt( intv ) ) / (2.0*A) );
-            t[1] = float( ( -B + sqrt( intv ) ) / (2.0*A) ); // N.B t2 is larger than t1
+            t[1] = float( ( -B + sqrt( intv ) ) / (2.0*A) );
         }
 
         if( t[1]>a.x && t[1]<b.x && t[1]<0 ){
@@ -117,7 +110,6 @@ void main(){
             gl_Position = projection*vec4(s.yzw, 1.0); 
             color = vec3(1.0,1.0,0.0);
             return;
-            intv_neg+=intv;
         }
     }
 }
