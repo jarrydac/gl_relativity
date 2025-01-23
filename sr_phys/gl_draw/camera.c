@@ -7,12 +7,14 @@ static struct  {
     float pitch;
     float yaw;
     vec3 up;
+    mat4 lorentz;
 } camera;
 
 void camera_init(void){
     camera.time = 0.0f;
     glm_vec3_copy( GLM_YUP, camera.up);
     glm_vec3_copy( GLM_VEC3_ZERO, camera.position);
+    glm_mat4_copy( GLM_MAT4_IDENTITY, camera.lorentz );
     camera.pitch = glm_rad( 0.0f );
     camera.yaw = glm_rad( -90.0f );
 }
@@ -49,6 +51,14 @@ void camera_set_c( float c ){
 
 float camera_get_c(void){
     return camera.c;
+}
+
+void camera_set_lorentz( const mat4 lorentz ){
+    glm_mat4_copy( (vec4*) lorentz, camera.lorentz ); 
+}
+
+void camera_get_lorentz( mat4 lorentz ){
+    glm_mat4_copy( camera.lorentz, lorentz ); 
 }
 
 void camera_look_direction(float pitch, float yaw, vec3 direction){
