@@ -29,4 +29,7 @@ void camera_set_angle( float pitch, float yaw );
 void camera_look_direction(float pitch, float yaw, vec3 direction);
 void camera_view_matrix( mat4 view );
 
+void camera_get_lorentz( mat4 lorentz );
+void camera_set_lorentz( const mat4 lorentz );
+
 #endif

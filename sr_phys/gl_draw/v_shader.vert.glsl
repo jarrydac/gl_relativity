@@ -18,6 +18,7 @@ uniform float time;
 uniform mat4 model;
 uniform mat4 view;
 uniform mat4 projection;
+uniform mat4 lorentz;
 
 float interval( vec4 a ){
     float t = a.x;
@@ -30,6 +31,10 @@ float interval( vec4 a ){
 vec4 transform( vec4 a, vec3 scaled_offset ){
     vec4 a_world = a + vec4(0.0, scaled_offset); // World coords.
     return vec4(a_world.x-time, (view*vec4(a_world.yzw, 1.0)).xyz); // Camera coords
+}
+
+vec4 project( vec4 st ){
+    return projection*vec4( ( lorentz*(vec4(sr_c,1.0,1.0,1.0)*st) ).yzw , 1.0) ;
 }
 
 void main(){
@@ -54,14 +59,14 @@ void main(){
 
     float t_end = -sqrt( dot(end.yzw, end.yzw) / (sr_c*sr_c) ); // This should be negetive, we're looking into the past??
     if(t_end > end.x){
-        gl_Position = projection*vec4(end.yzw, 1.0); 
+        gl_Position = project( vec4(t_end, end.yzw) );
         color = vec3(1.0,0.0,0.0);
         return;
     }
 
     float t_start = -sqrt( dot(start.yzw, start.yzw) / (sr_c*sr_c) );
     if(t_start < start.x){
-        gl_Position = projection*vec4(start.yzw, 1.0); 
+        gl_Position = project( vec4(t_start, start.yzw) );
         color = vec3(0.0,1.0,0.0);
         return;
     }
@@ -107,7 +112,7 @@ void main(){
         if( t[1]>a.x && t[1]<b.x && t[1]<0 ){
             float t = t[1];
             vec4 s = (1.0/(b.x-a.x)) * ( a*(b.x-t) + b*(t-a.x) ); // This is the line equation.
-            gl_Position = projection*vec4(s.yzw, 1.0); 
+            gl_Position = project(s);
             color = vec3(1.0,1.0,0.0);
             return;
         }
