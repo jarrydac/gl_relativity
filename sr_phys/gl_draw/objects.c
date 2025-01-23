@@ -17,6 +17,8 @@ void sr_objects_init(void){
 
     glActiveTexture(WLS_UNIT);
     glBindTexture(GL_TEXTURE_2D, wls_tex);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST); // Why do i need to set these on my laptop??
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST); // Why do i need to set these on my laptop??
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0);
     glTexImage2D(GL_TEXTURE_2D, 
             0, GL_RGBA32F, 
@@ -26,6 +28,8 @@ void sr_objects_init(void){
 
     glActiveTexture(WL_LENS_UNIT);
     glBindTexture(GL_TEXTURE_1D, wl_lens_tex);
+    glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_MAG_FILTER, GL_NEAREST); // Why do i need to set these on my laptop??
+    glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_MIN_FILTER, GL_NEAREST); // Why do i need to set these on my laptop??
     glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_MAX_LEVEL, 0);
     glTexImage1D(GL_TEXTURE_1D, 
             0, GL_R32I, 
