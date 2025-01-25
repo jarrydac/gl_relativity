@@ -1,4 +1,4 @@
-#include "gl_draw.h"
+#include "../include/gl_draw.h"
 
 #include <stdio.h>
 
@@ -8,7 +8,7 @@ int sr_draw_init( char* v_shader_str, char* f_shader_str, char* c_shader_str ){
     int version = gladLoaderLoadGL();
     if (version == 0) {
         printf("Failed to initialize OpenGL context\n");
-        return -1;
+        return 1;
     }
     printf("Loaded OpenGL %d.%d\n", GLAD_VERSION_MAJOR(version), GLAD_VERSION_MINOR(version));
 
@@ -25,10 +25,6 @@ int sr_draw_init( char* v_shader_str, char* f_shader_str, char* c_shader_str ){
     camera_init();
     sr_objects_init();
 
-    return 0;
-}
-
-unsigned int sr_render(void){
     return 0;
 }
 

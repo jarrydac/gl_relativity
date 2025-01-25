@@ -1,7 +1,7 @@
 #ifndef SR_MESH
 #define SR_MESH
 
-#include "include/cglm/cglm.h"
+#include "../lib/include/cglm/cglm.h"
 
 typedef struct {
     vec4 position;

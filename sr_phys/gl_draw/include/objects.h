@@ -2,7 +2,7 @@
 #ifndef SR_DRAW_OBJECTS
 #define SR_DRAW_OBJECTS
 
-#include "include/cglm/cglm.h"
+#include "../lib/include/cglm/cglm.h"
 
 #include "mesh.h"
 

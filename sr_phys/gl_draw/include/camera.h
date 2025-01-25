@@ -5,7 +5,7 @@
 #ifndef SR_DRAW_CAMERA
 #define SR_DRAW_CAMERA
 
-#include "include/cglm/cglm.h"
+#include "../lib/include/cglm/cglm.h"
 
 /**
  * Setup initial camera values.

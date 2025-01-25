@@ -1,3 +1,4 @@
-include/
-src/
+lib/
 *.old
+*.so
+draw.c

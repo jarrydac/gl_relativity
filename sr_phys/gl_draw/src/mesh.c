@@ -1,6 +1,6 @@
-#include "include/glad/gl.h"
+#include "../lib/include/glad/gl.h"
 
-#include "mesh.h"
+#include "../include/mesh.h"
 
 int sr_init_mesh(
         sr_mesh* mesh,

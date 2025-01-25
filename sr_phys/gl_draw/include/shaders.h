@@ -1,9 +1,8 @@
 #ifndef SR_DRAW_SHADERS
 #define SR_DRAW_SHADERS
 
-#include "include/glad/gl.h"
-
-#include "include/cglm/cglm.h"
+#include "../lib/include/glad/gl.h"
+#include "../lib/include/cglm/cglm.h"
 
 /**
  *  Shader loading module.

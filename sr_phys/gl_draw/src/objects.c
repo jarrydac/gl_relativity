@@ -1,7 +1,7 @@
-#include "objects.h"
+#include "../include/objects.h"
 
-#include "include/glad/gl.h"
-#include "shaders.h"
+#include "../lib/include/glad/gl.h"
+#include "../include/shaders.h"
 
 #define WLS_UNIT GL_TEXTURE0
 #define WL_LENS_UNIT GL_TEXTURE0+1

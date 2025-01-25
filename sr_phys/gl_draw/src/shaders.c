@@ -1,9 +1,9 @@
-#include "shaders.h"
+#include "../include/shaders.h"
 
 #include <stdlib.h>
 #include <stdio.h>
 
-#include "camera.h"
+#include "../include/camera.h"
 
 static GLuint obj_program;
 static struct {
