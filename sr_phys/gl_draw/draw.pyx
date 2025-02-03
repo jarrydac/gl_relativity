@@ -3,10 +3,12 @@ import copy
 import pygame
 import math
 import numpy as np
+cimport numpy as cnp
 import trimesh
 
 import cython
 from libc.stdlib cimport malloc, free
+from libc.string cimport memcpy
 
 camera = None
 c = 30.0
@@ -78,6 +80,7 @@ cdef extern from 'include/objects.h':
     void sr_object_delete( sr_object* );
 
     void sr_object_update_wl( sr_object*, sr_obj_wl* );      
+    void sr_object_update_mesh( sr_object*, sr_mesh );  
     void sr_object_update_model( sr_object*, mat4 model );  
 
     void sr_object_draw( sr_object* );
@@ -105,12 +108,17 @@ def lorentz_matrix(vel):
 class _Camera:
     def __init__(self):
         camera_init()
+        self.vel = np.array([0.0,0.0,0.0])
 
     @property
     def pos(self):
         cdef vec3 pos
         camera_get_pos( pos )
         return pos
+
+    @property
+    def vel(self):
+        return self._vel
 
     @property
     def angle( self ):
@@ -141,76 +149,44 @@ class _Camera:
     def time( self, time ):
         camera_set_time(time)
 
-    @lorentz_matrix.setter
-    def lorentz_matrix(self, mat):
-        #cdef mat4 arr = <mat4> _np_to_mat4(mat);
-        cdef mat4 arr = np.ascontiguousarray(mat, dtype='f')
+    @vel.setter
+    def vel(self, vel):
+        self._vel = vel
+        lorentz_transform = lorentz_matrix(vel)
+        cdef mat4 arr = np.ascontiguousarray(lorentz_transform, dtype='f')
         camera_set_lorentz( <mat4> arr )
-        #free( arr )
 
-# Read a WL into an sr_ob_wl on the heap.
-cdef sr_obj_wl* _wl_to_obj_wl_ptr(wl):
-    global c
 
-    cdef sr_obj_wl* wl_ptr = <sr_obj_wl*> malloc( sizeof(sr_obj_wl) ) # note in objects.h array is fixed size so it is of course already allocated now.
-    if wl_ptr is NULL:
-        raise MemoryError()
-
-    wl_ptr.length = len(wl.events)
-    
-    for i in range( wl_ptr.length ):
-        event = wl.events[i]
-        wl_ptr.events[i][0] = event.vec.t/c
-        wl_ptr.events[i][1] = event.vec.x
-        wl_ptr.events[i][2] = event.vec.y
-        wl_ptr.events[i][3] = event.vec.z
-
-    return wl_ptr
-
-cdef sr_mesh* _np_offset_indicies_to_mesh(offsets, indicies):
-    cdef sr_mesh* mesh_ptr = <sr_mesh*> malloc( sizeof(sr_mesh) )
-    if mesh_ptr is NULL:
-        raise MemoryError()
-
-    cdef int offsets_len = len(offsets)
-    cdef int indicies_len = len(indicies)
-
-    cdef sr_mesh_vert* offsets_a = <sr_mesh_vert*> malloc( sizeof(sr_mesh_vert)*offsets_len)
-    if offsets_a is NULL:
-        raise MemoryError()
-    for i in range( offsets_len ):
-        offsets_a[i].position[0] = offsets[i][0]
-        offsets_a[i].position[1] = offsets[i][1]
-        offsets_a[i].position[2] = offsets[i][2]
-        offsets_a[i].position[3] = offsets[i][3]
-
-    cdef int* indicies_a = <int*> malloc( sizeof(int)*indicies_len)
-    if indicies_a is NULL:
-        raise MemoryError()
-    for i in range( indicies_len ):
-        indicies_a[i] = indicies[i]
-
-    sr_init_mesh(mesh_ptr, 
-                 indicies_a, indicies_len,
-                 offsets_a, offsets_len
-                 )
-    
-    return mesh_ptr
-
-cdef float* _np_to_mat4(mat):
-    # mat size checking?
-    cdef mat4 cmat = <mat4> malloc( 16 * cython.sizeof(float) )
-    if cmat is NULL:
-        raise MemoryError();
-    for i in range( 16 ):
-        (<float*> cmat)[i] = mat.flat[i]
-    return cmat[0]
-
+# An (immutable) mesh of verticies and indicies
 cdef class Mesh:
     cdef sr_mesh* thisptr
 
     def __cinit__(self, offsets, indicies):
-        self.thisptr = _np_offset_indicies_to_mesh(offsets, indicies)
+        cdef int offsets_len = len(offsets)
+        cdef int indicies_len = len(indicies)
+
+        cdef sr_mesh_vert* offset_array = <sr_mesh_vert*> malloc( sizeof(sr_mesh_vert)*offsets_len)
+        cdef int* index_array = <int*> malloc( sizeof(int)*indicies_len)
+
+        self.thisptr = <sr_mesh*> malloc( sizeof(sr_mesh) )
+
+        if NULL in (self.thisptr, offset_array, index_array):
+            raise MemoryError()
+
+        # Read in data
+        for i in range( offsets_len ):
+            offset_array[i].position[0] = offsets[i][0]
+            offset_array[i].position[1] = offsets[i][1]
+            offset_array[i].position[2] = offsets[i][2]
+            offset_array[i].position[3] = offsets[i][3]
+
+        for i in range( indicies_len ):
+            index_array[i] = indicies[i]
+
+        sr_init_mesh(self.thisptr, 
+                     index_array, indicies_len,
+                     offset_array, offsets_len
+                     )
 
     def __dealloc__(self):
         if self.thisptr is not NULL:
@@ -219,20 +195,52 @@ cdef class Mesh:
     cdef sr_mesh* get_pointer(self):
         return self.thisptr
 
-def mesh_from_trimesh(t_mesh):
-    offsets = np.array([[0, v[0], v[1], v[2]] for v in t_mesh.vertices])
-    indicies = np.array([i for face in t_mesh.faces for i in face]) # This is the pyhton way of squashing a list??
-    
-    return Mesh(offsets, indicies)
+    @staticmethod
+    def from_trimesh(mesh):
+        offsets = np.array([[0, v[0], v[1], v[2]] for v in mesh.vertices])
+        indicies = np.array([i for face in mesh.faces for i in face]) # the pyhton way of squashing a list??
+        return Mesh(offsets, indicies)
 
+    @staticmethod
+    def from_file(file):
+        mesh = trimesh.load(file, force="mesh")
+        return Mesh.from_trimesh(mesh)
+        
+# Read a WL into an sr_ob_wl on the heap.
+cdef sr_obj_wl* _wl_to_obj_wl_ptr(wl):
+    global c
+
+    cdef sr_obj_wl* wl_ptr = <sr_obj_wl*> malloc( sizeof(sr_obj_wl) ) # note in objects.h array is fixed size so it is of course already allocated now.
+    if wl_ptr is NULL:
+        raise MemoryError()
+
+    wl_ptr.length = len(wl._events)
+
+    if wl_ptr.length > 127:
+        raise ValueError("WL too long!")
+    cdef cnp.ndarray contiguous_events = np.ascontiguousarray(wl._events, dtype='f')
+    memcpy(wl_ptr.events, contiguous_events.data, wl_ptr.length*sizeof(vec4))
+
+    #for i in range( wl_ptr.length ):
+    #    event = wl.events[i]
+    #    wl_ptr.events[i][0] = event.vec.t/c
+    #    wl_ptr.events[i][1] = event.vec.x
+    #    wl_ptr.events[i][2] = event.vec.y
+    #    wl_ptr.events[i][3] = event.vec.z
+
+    return wl_ptr
+
+# A (moveable) object, containing the minimum required data to draw.
+# ie. an anchoring worldline, a mesh and a model matrix
 cdef class Object:
     cdef sr_object* thisptr
+    cdef public wl
 
     def __cinit__(self, wl, Mesh mesh, model=IDENTITY):
         # Break all the args down to appropriate structs
         cdef sr_obj_wl* wl_ptr = _wl_to_obj_wl_ptr(wl); 
-        cdef mat4 model_mat4 = <mat4> _np_to_mat4(model);
         cdef sr_mesh* mesh_ptr = mesh.get_pointer();
+        cdef mat4 model_mat4 = np.ascontiguousarray(model, dtype="f")
         
         cdef sr_object* obj = <sr_object*> malloc( sizeof(sr_object) )
         if obj is NULL:
@@ -243,23 +251,26 @@ cdef class Object:
 
         # These are all copied in so we can destroy these.
         free(wl_ptr)
+
+        self.wl = wl
+
     def __dealloc__(self):
         if self.thisptr is not NULL:
             sr_object_delete( self.thisptr )
 
+    def _update_wl(self):
+        cdef sr_obj_wl* wl_ptr = _wl_to_obj_wl_ptr(self.wl)
+        sr_object_update_wl(self.thisptr, wl_ptr)
+        free(wl_ptr)
+
     def draw(self):
+        if self.wl.dirty:
+            self._update_wl()
+
         if self.thisptr is not NULL:
             sr_object_draw(self.thisptr);
 
-    @property
-    def wl(self):
-        raise Exception("Do not get wl from draw Object")
 
-    @wl.setter
-    def wl(self, wl):
-        cdef sr_obj_wl* wl_ptr = _wl_to_obj_wl_ptr(wl)
-        sr_object_update_wl(self.thisptr, wl_ptr)
-        free(wl_ptr)
 
 # INIT
 def init():
@@ -274,7 +285,7 @@ def init():
 
     camera_set_c(c);
 
-    BOX_MESH = mesh_from_trimesh( trimesh.primitives.Box(
+    BOX_MESH = Mesh.from_trimesh( trimesh.primitives.Box(
         extents=[1,1,1],
         transform=[
         [1,0,0,0.5],
@@ -284,62 +295,12 @@ def init():
             ]
         ).to_mesh() ) 
 
-    SPHERE_MESH = mesh_from_trimesh( trimesh.primitives.Sphere(
+    SPHERE_MESH = Mesh.from_trimesh( trimesh.primitives.Sphere(
         radius=1
         ).to_mesh() ) 
     
     return;
 
+# Clear for next pass
 def clear():
     sr_clear()
-
-# Drawing
-def draw_mesh(mesh, screen, game_camera, col='red'):
-    global BOX_MESH
-    global camera
-
-    camera.pos = game_camera.lc().origin.vec.vec[1:4];
-    camera.time = game_camera.time;
-    camera.lorentz_matrix = lorentz_matrix( game_camera.vel )
-
-    if '_render' in vars(mesh):
-        if mesh._render.type == 'WL_BOX':
-            if not mesh._render.obj:
-                mesh._render.obj = Object(mesh._render.wl,
-                                          BOX_MESH,
-                                          mesh._render.model
-                                          )
-
-            if mesh._render.wl.dirty:
-                mesh._render.obj.wl = mesh._render.wl
-                mesh._render.wl.dirty = False;
-                
-        mesh._render.obj.draw()
-        return;
-
-    for wl in mesh.wls:
-        draw_wl(wl, screen, game_camera)
-
-
-def draw_wl(wl, screen, game_camera):
-    global SPHERE_MESH
-    global camera
-
-    camera.pos = game_camera.lc().origin.vec.vec[1:4];
-    camera.time = game_camera.time;
-    camera.lorentz_matrix = lorentz_matrix( game_camera.vel )
-
-    if '_render' in vars(wl):
-        if wl._render.type == 'WL':
-            if not wl._render.obj:
-                wl._render.obj = Object(wl,
-                                          SPHERE_MESH,
-                                          wl._render.model
-                                          )
-
-            if wl.dirty:
-                wl._render.obj.wl = wl
-                wl.dirty = False;
-                
-        wl._render.obj.draw()
-        return;
