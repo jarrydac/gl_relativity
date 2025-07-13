@@ -2,6 +2,7 @@ SRC_DIR = src
 BUILD_DIR = build
 
 objects = $(addprefix $(BUILD_DIR)/,gl_draw.o camera.o mesh.o objects.o shaders.o)
+
 libs = lib/src/gl.o
 
 LINKER_FLAGS = -lGL -lm
@@ -19,7 +20,10 @@ libsr_draw: $(objects) $(BUILD_DIR)/gl.o
 # $^ = all the deps
 
 $(BUILD_DIR)/%.o: $(SRC_DIR)/%.c
-	gcc -Wall -Wextra -fPIC -c $< -o $@
+	gcc -Wall -Wextra -Ilib/include -fPIC -c $< -o $@
 
 $(BUILD_DIR)/gl.o: lib/src/gl.c
 	gcc -Wall -Wextra -Ilib/include -fPIC -c $< -o $@
+	
+clean:
+	rm $(objects)
