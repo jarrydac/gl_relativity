@@ -21,7 +21,7 @@ uniform mat4 projection;
 uniform mat4 lorentz;
 
 out vec4 pos_st;
-
+out vec3 vel;
 // Utility functions
 
 // Spacetime interval
@@ -94,6 +94,7 @@ vec4 ab_interpolate( vec4 a, vec4 b, float t){
 void main(){
     gl_Position = projection*view*vec4(0.0,0.0,-10.0,1.0);
     color = vec3(0.0,0.0,1.0);
+    vel = vec3(0.0,0.0,0.0);
 
     wl_len = texelFetch(wl_lens, int(wl_index), 0).r;
 
@@ -154,6 +155,11 @@ void main(){
         if( intersection_t>a_st.x && intersection_t<b_st.x && intersection_t<0 ){
             pos_st = ab_interpolate( a_st, b_st, intersection_t );
             gl_Position = projection_transform( pos_st );
+            
+            // Basic velocity formula
+            vel = (b_st.yzw - a_st.yzw) / (b_st.x - a_st.x);
+            
+
             color = vec3(1.0,1.0,0.0);
             return;
         }

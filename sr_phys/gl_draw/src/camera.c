@@ -4,6 +4,7 @@ static struct  {
     float c;
     float time;
     vec3 position;
+    vec3 velocity;
     float pitch;
     float yaw;
     vec3 up;
@@ -14,6 +15,7 @@ void camera_init(void){
     camera.time = 0.0f;
     glm_vec3_copy( GLM_YUP, camera.up);
     glm_vec3_copy( GLM_VEC3_ZERO, camera.position);
+    glm_vec3_copy( GLM_VEC3_ZERO, camera.velocity);
     glm_mat4_copy( GLM_MAT4_IDENTITY, camera.lorentz );
     camera.pitch = glm_rad( 0.0f );
     camera.yaw = glm_rad( -90.0f );
@@ -25,6 +27,14 @@ void camera_get_pos( vec3 pos ){
 
 void camera_set_pos( const vec3 pos ){
     glm_vec3_copy( (float*) pos, camera.position );
+}
+
+void camera_get_vel( vec3 vel ){
+    glm_vec3_copy( camera.velocity, vel );
+}
+
+void camera_set_vel( const vec3 vel ){
+    glm_vec3_copy( (float*) vel, camera.velocity );
 }
 
 void camera_get_angle( float* pitch, float* yaw ){

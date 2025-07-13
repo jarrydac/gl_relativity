@@ -18,13 +18,14 @@ typedef struct {
     unsigned int anchor_wl;
     sr_mesh* mesh;
     mat4 model;
+    vec2 color;
 } sr_object;
 
 void sr_objects_init(void);     // init
 void sr_objects_render(void);   // call draw functions
 void sr_objects_close(void);    // close
 
-int sr_object_init( sr_object* object, sr_obj_wl* wl, sr_mesh* mesh, mat4 model );
+int sr_object_init( sr_object* object, sr_obj_wl* wl, sr_mesh* mesh, mat4 model, vec2 color );
 void sr_object_delete( sr_object* );
 
 void sr_object_update_wl( sr_object* object, sr_obj_wl* wl );           // Overwrite wl in the wls texture, and length in the lengths texture

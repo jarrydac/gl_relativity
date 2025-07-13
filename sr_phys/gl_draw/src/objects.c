@@ -46,12 +46,14 @@ void sr_objects_close(void){
     glDeleteTextures(1, &wl_lens_tex);
 }    
 
-int sr_object_init( sr_object* object, sr_obj_wl* wl, sr_mesh* mesh, mat4 model ){
+int sr_object_init( sr_object* object, sr_obj_wl* wl, sr_mesh* mesh, mat4 model, vec2 color ){
     if(wls_count >= MAX_WL_NUM) return 1;   // TO MANY WLS.
     object->anchor_wl = wls_count++;        // Select next avaliable position TODO: manage free'd indicies
     sr_object_update_wl( object, wl );
 
     object->mesh = mesh;
+    
+    glm_vec2_copy( color, object->color ); 
 
     sr_object_update_model( object, model );
     return 0;
@@ -88,7 +90,7 @@ void sr_object_update_model( sr_object* object, mat4 model ){
 }    
 
 void sr_object_draw( sr_object* object ){
-    sr_use_obj_program( object->model, object->anchor_wl );
+    sr_use_obj_program( object->model, object->anchor_wl, object->color );
 
     glActiveTexture(WLS_UNIT);
     glBindTexture(GL_TEXTURE_2D, wls_tex);

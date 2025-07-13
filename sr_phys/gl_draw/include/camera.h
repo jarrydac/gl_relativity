@@ -23,6 +23,9 @@ void camera_set_c( float c );
 void camera_get_pos( vec3 position );
 void camera_set_pos( const vec3 position );
 
+void camera_get_vel( vec3 velocity );
+void camera_set_vel( const vec3 velocity );
+
 void camera_get_angle( float* pitch, float* yaw);
 void camera_set_angle( float pitch, float yaw );
 

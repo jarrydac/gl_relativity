@@ -14,6 +14,8 @@ static struct {
     int c;
     int wl_id;
     int lorentz;
+    int vel;
+    int wavelength;
 } obj_program_uniforms;
 
 static mat4 obj_model_ident;
@@ -59,6 +61,8 @@ int sr_shaders_init( char* vertex_shader_src, char* fragment_shader_src ){
     obj_program_uniforms.t = glGetUniformLocation(obj_program, "time");
     obj_program_uniforms.wl_id = glGetUniformLocation(obj_program, "wl_index");
     obj_program_uniforms.lorentz = glGetUniformLocation(obj_program, "lorentz");
+    obj_program_uniforms.vel = glGetUniformLocation(obj_program, "cam_vel");
+    obj_program_uniforms.wavelength = glGetUniformLocation(obj_program, "wavelength");
 
     // Create static matricies
     glm_mat4_identity(obj_model_ident);
@@ -109,7 +113,7 @@ GLuint sr_link_program( sr_shader* shaders, int num ){
     return program;
 }
 
-void sr_use_obj_program( mat4 model, unsigned int wl_id ){
+void sr_use_obj_program( mat4 model, unsigned int wl_id, vec2 wavelength ){
     glUseProgram(obj_program);
 
     glUniform1f(obj_program_uniforms.c, camera_get_c());
@@ -127,4 +131,12 @@ void sr_use_obj_program( mat4 model, unsigned int wl_id ){
     mat4 lorentz;
     camera_get_lorentz( lorentz );
     glUniformMatrix4fv(obj_program_uniforms.lorentz, 1, GL_FALSE, (float*)lorentz);
+    
+    // Camera velocity
+    vec3 cam_velocity;
+    camera_get_vel( cam_velocity );
+    glUniform3fv( obj_program_uniforms.vel, 1, (float*)cam_velocity);
+
+    // Object color ie (intensity, wavelength)
+    glUniform2fv( obj_program_uniforms.wavelength, 1, (float*)wavelength );
 }

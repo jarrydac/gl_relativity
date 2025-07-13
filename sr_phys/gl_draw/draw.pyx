@@ -23,6 +23,7 @@ IDENTITY= np.array([
     [0, 0, 0, 1]
     ])
 
+ctypedef float vec2[2]
 ctypedef float vec3[3]
 ctypedef float vec4[4]
 ctypedef vec4 mat4[4];
@@ -38,6 +39,9 @@ cdef extern from 'include/camera.h':
 
     void camera_get_pos( vec3 pos );
     void camera_set_pos( vec3 pos );
+    
+    void camera_get_vel( vec3 velocity );
+    void camera_set_vel( const vec3 velocity );
 
     void camera_get_angle( float* pitch, float* yaw);
     void camera_set_angle( float pitch, float yaw );
@@ -76,7 +80,7 @@ cdef extern from 'include/objects.h':
     ctypedef struct sr_object:
         pass
 
-    int sr_object_init( sr_object*, sr_obj_wl*, sr_mesh*, mat4 model );
+    int sr_object_init( sr_object*, sr_obj_wl*, sr_mesh*, mat4 model, vec2 color );
     void sr_object_delete( sr_object* );
 
     void sr_object_update_wl( sr_object*, sr_obj_wl* );      
@@ -108,7 +112,6 @@ def lorentz_matrix(vel):
 class _Camera:
     def __init__(self):
         camera_init()
-        self.vel = np.array([0.0,0.0,0.0])
 
     @property
     def pos(self):
@@ -118,7 +121,9 @@ class _Camera:
 
     @property
     def vel(self):
-        return self._vel
+        cdef vec3 vel
+        camera_get_vel( vel )
+        return self.vel
 
     @property
     def angle( self ):
@@ -150,8 +155,9 @@ class _Camera:
         camera_set_time(time)
 
     @vel.setter
-    def vel(self, vel):
-        self._vel = vel
+    def vel(self, vec3 vel):
+        camera_set_vel( vel )
+
         lorentz_transform = lorentz_matrix(vel)
         cdef mat4 arr = np.ascontiguousarray(lorentz_transform, dtype='f')
         camera_set_lorentz( <mat4> arr )
@@ -236,16 +242,17 @@ cdef class Object:
     cdef sr_object* thisptr
     cdef public wl
 
-    def __cinit__(self, wl, Mesh mesh, model=IDENTITY):
+    def __cinit__(self, wl, Mesh mesh, model=IDENTITY, color=np.array([1.0,500.0])):
         # Break all the args down to appropriate structs
         cdef sr_obj_wl* wl_ptr = _wl_to_obj_wl_ptr(wl); 
         cdef sr_mesh* mesh_ptr = mesh.get_pointer();
         cdef mat4 model_mat4 = np.ascontiguousarray(model, dtype="f")
+        cdef vec2 color_vec2 = np.ascontiguousarray(color, dtype="f")
         
         cdef sr_object* obj = <sr_object*> malloc( sizeof(sr_object) )
         if obj is NULL:
             raise MemoryError
-        if sr_object_init(obj, wl_ptr, mesh_ptr, model_mat4):
+        if sr_object_init(obj, wl_ptr, mesh_ptr, model_mat4, color_vec2):
             raise Exception("Failed to init Object")
         self.thisptr = obj
 

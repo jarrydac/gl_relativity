@@ -10,6 +10,6 @@
 int sr_shaders_init( char* vertex_shader, char* fragment_shader );
 
 // object.h shader program
-void sr_use_obj_program(mat4 model, unsigned int wl_index );
+void sr_use_obj_program(mat4 model, unsigned int wl_index, vec2 color );
 
 #endif
