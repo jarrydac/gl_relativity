@@ -32,7 +32,7 @@ cdef extern from 'include/gl_draw.h':
     int sr_draw_init( char* v_shader,  char* f_shader, char* c_shader )
     void sr_close();
 
-    void sr_clear();
+    void sr_clear(float r, float g, float b);
 
 cdef extern from 'include/camera.h':
     void camera_init();
@@ -222,8 +222,8 @@ cdef sr_obj_wl* _wl_to_obj_wl_ptr(wl):
 
     wl_ptr.length = len(wl._events)
 
-    if wl_ptr.length > 127:
-        raise ValueError("WL too long!")
+    if wl_ptr.length > 1023:    
+        raise ValueError(f"WL too long! {wl_ptr.length}")
     cdef cnp.ndarray contiguous_events = np.ascontiguousarray(wl._events, dtype='f')
     memcpy(wl_ptr.events, contiguous_events.data, wl_ptr.length*sizeof(vec4))
 
@@ -309,5 +309,5 @@ def init():
     return;
 
 # Clear for next pass
-def clear():
-    sr_clear()
+def clear( r=1.0, g=1.0, b=1.0 ):
+    sr_clear(r,g,b)

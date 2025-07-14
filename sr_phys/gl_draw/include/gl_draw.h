@@ -10,4 +10,4 @@
 int sr_draw_init( char* v_shader_str, char* f_shader_str, char* c_shader_str );
 void sr_close(void);
 
-void sr_clear(void);
+void sr_clear(float r, float g, float b);

@@ -6,7 +6,7 @@
 
 #include "mesh.h"
 
-#define MAX_WL_LEN 128
+#define MAX_WL_LEN 1024
 #define MAX_WL_NUM 1024
 
 typedef struct {
