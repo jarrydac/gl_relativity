@@ -58,6 +58,7 @@ cdef extern from 'include/camera.h':
 cdef extern from 'include/mesh.h':
     ctypedef struct sr_mesh_vert:
         vec4 position;
+        vec3 normals;
 
     ctypedef struct sr_mesh:
         pass
@@ -167,7 +168,7 @@ class _Camera:
 cdef class Mesh:
     cdef sr_mesh* thisptr
 
-    def __cinit__(self, offsets, indicies):
+    def __cinit__(self, offsets, normals, indicies):
         cdef int offsets_len = len(offsets)
         cdef int indicies_len = len(indicies)
 
@@ -179,12 +180,20 @@ cdef class Mesh:
         if NULL in (self.thisptr, offset_array, index_array):
             raise MemoryError()
 
+        print(normals)
+
         # Read in data
         for i in range( offsets_len ):
+            # Position
             offset_array[i].position[0] = offsets[i][0]
             offset_array[i].position[1] = offsets[i][1]
             offset_array[i].position[2] = offsets[i][2]
             offset_array[i].position[3] = offsets[i][3]
+            
+            #Velocity
+            offset_array[i].position[4] = normals[i][0]
+            offset_array[i].position[5] = normals[i][1]
+            offset_array[i].position[6] = normals[i][2]
 
         for i in range( indicies_len ):
             index_array[i] = indicies[i]
@@ -204,8 +213,9 @@ cdef class Mesh:
     @staticmethod
     def from_trimesh(mesh):
         offsets = np.array([[0, v[0], v[1], v[2]] for v in mesh.vertices])
+        normals = np.array([[v[0], v[1], v[2]] for v in mesh.vertex_normals])
         indicies = np.array([i for face in mesh.faces for i in face]) # the pyhton way of squashing a list??
-        return Mesh(offsets, indicies)
+        return Mesh(offsets, normals, indicies)
 
     @staticmethod
     def from_file(file):

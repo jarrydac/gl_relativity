@@ -32,6 +32,13 @@ int sr_init_mesh(
         );
     glEnableVertexAttribArray(0);
 
+    glVertexAttribPointer( 1, 3, 
+            GL_FLOAT, GL_FALSE, 
+            sizeof( sr_mesh_vert ), 
+            (void*) offsetof( sr_mesh_vert, normal ) 
+        );
+    glEnableVertexAttribArray(1);
+
     glBindVertexArray(0); // I dont trust myself.
 
     return 0;

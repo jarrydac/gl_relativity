@@ -5,6 +5,7 @@
 
 typedef struct {
     vec4 position;
+    vec3 normal;
 } sr_mesh_vert;
 
 typedef struct {

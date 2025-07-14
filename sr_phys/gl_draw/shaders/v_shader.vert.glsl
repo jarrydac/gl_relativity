@@ -4,6 +4,7 @@
 
 // Mesh properties
 layout (location = 0) in vec4 mesh_pos;
+layout (location = 1) in vec3 mesh_norm;
 
 // Anchor wl properties
 uniform uint wl_index;
@@ -21,6 +22,7 @@ uniform mat4 projection;
 uniform mat4 lorentz;
 
 out vec4 pos_st;
+out vec3 norm;
 out vec3 vel;
 // Utility functions
 
@@ -92,6 +94,8 @@ vec4 ab_interpolate( vec4 a, vec4 b, float t){
 
 
 void main(){
+    norm = mat3(transpose(inverse(model))) * mesh_norm; 
+
     gl_Position = projection*view*vec4(0.0,0.0,-10.0,1.0);
     color = vec3(0.0,0.0,1.0);
     vel = vec3(0.0,0.0,0.0);
