@@ -4,6 +4,9 @@
 #include <stdio.h>
 
 #include "../include/camera.h"
+#include "../include/lights.h"
+
+#define SPEC_UNIT GL_TEXTURE0+2
 
 static GLuint obj_program;
 static struct {
@@ -139,4 +142,6 @@ void sr_use_obj_program( mat4 model, unsigned int wl_id, vec2 wavelength ){
 
     // Object color ie (intensity, wavelength)
     glUniform2fv( obj_program_uniforms.wavelength, 1, (float*)wavelength );
+    
+    sr_lights_load_uniforms( obj_program );
 }

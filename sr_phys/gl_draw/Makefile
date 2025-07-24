@@ -1,7 +1,7 @@
 SRC_DIR = src
 BUILD_DIR = build
 
-objects = $(addprefix $(BUILD_DIR)/,gl_draw.o camera.o mesh.o objects.o shaders.o)
+objects = $(addprefix $(BUILD_DIR)/,gl_draw.o camera.o mesh.o objects.o shaders.o lights.o)
 
 libs = lib/src/gl.o
 

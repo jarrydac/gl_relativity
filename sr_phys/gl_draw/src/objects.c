@@ -2,6 +2,7 @@
 
 #include "../lib/include/glad/gl.h"
 #include "../include/shaders.h"
+#include "../include/lights.h"
 
 #define WLS_UNIT GL_TEXTURE0
 #define WL_LENS_UNIT GL_TEXTURE0+1
@@ -96,6 +97,8 @@ void sr_object_draw( sr_object* object ){
     glBindTexture(GL_TEXTURE_2D, wls_tex);
     glActiveTexture(WL_LENS_UNIT);
     glBindTexture(GL_TEXTURE_1D, wl_lens_tex);
+    
+    sr_lights_bind_textures();    
 
     glBindVertexArray( object->mesh->vao_id );
 

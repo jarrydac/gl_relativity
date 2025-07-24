@@ -24,6 +24,9 @@ uniform mat4 lorentz;
 out vec4 pos_st;
 out vec3 norm;
 out vec3 vel;
+
+out float gl_ClipDistance[1];
+
 // Utility functions
 
 // Spacetime interval
@@ -96,7 +99,9 @@ vec4 ab_interpolate( vec4 a, vec4 b, float t){
 void main(){
     norm = mat3(transpose(inverse(model))) * mesh_norm; 
 
-    gl_Position = projection*view*vec4(0.0,0.0,-10.0,1.0);
+    gl_Position = projection*view*vec4(0.0,0.0,0.0,1.0);
+    gl_ClipDistance[0] = -1.0;
+
     color = vec3(0.0,0.0,1.0);
     vel = vec3(0.0,0.0,0.0);
 
@@ -125,6 +130,7 @@ void main(){
     if(end_s_intersection_t > end_st.x){
         gl_Position = projection_transform( vec4(end_s_intersection_t, end_st.yzw) );
         pos_st =  vec4(end_s_intersection_t, end_st.yzw);
+        gl_ClipDistance[0] = 0.0;
         color = vec3(1.0,0.0,0.0);
         return;
     }
@@ -134,6 +140,7 @@ void main(){
         // TODO: For now we are displaying this point in a different color,
         // but it makes sense to clip the vertex by time-intersection_t
         gl_Position = projection_transform( vec4(start_s_intersection_t, start_st.yzw) );
+        gl_ClipDistance[0] = 0.0;
         pos_st =  vec4(start_s_intersection_t, start_st.yzw);
         color = vec3(0.0,1.0,0.0);
         return;
@@ -159,6 +166,7 @@ void main(){
         if( intersection_t>a_st.x && intersection_t<b_st.x && intersection_t<0 ){
             pos_st = ab_interpolate( a_st, b_st, intersection_t );
             gl_Position = projection_transform( pos_st );
+            gl_ClipDistance[0] = 0.0;
             
             // Basic velocity formula
             vel = (b_st.yzw - a_st.yzw) / (b_st.x - a_st.x);

@@ -2,7 +2,7 @@
 
 #include <stdio.h>
 
-int sr_draw_init( char* v_shader_str, char* f_shader_str, char* c_shader_str ){
+int sr_draw_init( char* v_shader_str, char* f_shader_str, char* c_shader_str, vec3 cie_data[471] ){
 
     // GLAD Init.
     int version = gladLoaderLoadGL();
@@ -24,6 +24,7 @@ int sr_draw_init( char* v_shader_str, char* f_shader_str, char* c_shader_str ){
     sr_shaders_init( v_shader_str, f_shader_str );
     camera_init();
     sr_objects_init();
+    sr_lights_init(cie_data);
 
     return 0;
 }
