@@ -411,7 +411,7 @@ def init():
     global SPHERE_MESH
     camera = _Camera()
 
-    v_shader = open('sr_phys/gl_draw/shaders/v_shader.vert.glsl', 'r')
+    v_shader = open('sr_phys/gl_draw/shaders/wl_vert_shader.glsl', 'r')
     f_shader = open('sr_phys/gl_draw/shaders/f_shader.frag.glsl', 'r')
     
     cie = np.loadtxt('sr_phys/gl_draw/CIE_xyz_1931_2deg.csv', delimiter=",", usecols=(1,2,3))

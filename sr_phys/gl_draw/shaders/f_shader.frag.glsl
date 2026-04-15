@@ -2,10 +2,9 @@
 #define MAX_PEAKS 10
 #define MAX_LIGHTS 10
 
-in vec3 color;
-in vec3 vel;
 in vec4 pos_st;
 in vec3 norm;
+in vec3 vel;
 
 out vec4 FragColor;
 
@@ -89,12 +88,15 @@ vec3 rel_rgb(float intensity, float wavelength){
 }
 
 void main(){
+    //FragColor = vec4(1.0);
+    //return;
+
     T_rgb_xyz[0] = vec3(0.49000, 0.17697, 0.00000);
     T_rgb_xyz[1] = vec3(0.31000, 0.81240, 0.01000);
     T_rgb_xyz[2] = vec3(0.20000, 0.01063, 0.99000);
     T_xyz_rgb = inverse(T_rgb_xyz);
     
-    vec3 transformed_norm = mat3(transpose(inverse(model))) * mat3(transpose(inverse(view))) * norm;
+    vec3 transformed_norm = norm;
 
     vec3 rel_vel = vel - cam_vel;
     float cam_gamma = gamma( rel_vel );
@@ -108,18 +110,30 @@ void main(){
     float ambient_reflection = 1.0;   
     float diffuse_reflection = 0.8;   
 
-        // Ambient lighting
+    // Ambient lighting
     vec3 total_rgb = ambient_reflection * rel_rgb(ambient_intensity, ambient_wavelength);
 
     for(int i=0; i<lights_len; i++){
         light light = lights[i];
-        // We are going to start with one monochrome light.
+        
+        //float light_gamma = gamma( -vel );
+        //float light_theta = angle( -vel, light_pos - pos_st.yzw );
         vec4 light_pos4 = view * vec4(light.pos,1.0);
         vec3 light_pos = light_pos4.xyz / light_pos4.w;
+        
+        vec3 v =  -vel;
+        vec3 v_prime = -vel + cam_vel ;
+        
+        float cos_theta = dot( v, light_pos-pos_st.yzw ) / (sqrt( dot(v,v) ) * sqrt( dot(light_pos-pos_st.yzw, light_pos-pos_st.yzw)) ); 
 
-        float light_gamma = gamma( -vel );
-        float light_theta = angle( -vel, light_pos - pos_st.yzw );
-        float light_shift = shift_factor( light_gamma, light_theta );
+        float cos_theta_prime = dot(v_prime,pos_st.yzw) / ( sqrt( dot(v_prime,v_prime) ) * sqrt( dot(pos_st.yzw,pos_st.yzw) ) );
+
+        float light_shift = ( 1 - sqrt( dot(v,v) )*cos_theta/sr_c ) / ( 1 + sqrt( dot(v_prime, v_prime) )*cos_theta_prime/sr_c );
+
+        camera_shift_factor = 1/( 1 - sqrt(dot(v_prime,v_prime))*cos_theta_prime/sr_c );
+
+        //light_shift = 1;
+        camera_shift_factor = 1;
 
         vec3 viewer_dir = normalize( -pos_st.yzw );
         vec3 reflect_dir = reflect( normalize( pos_st.yzw - light_pos ), transformed_norm );
@@ -152,7 +166,7 @@ void main(){
             for(int i=360; i<830; i++){
                 // We'll work from the observer frame backward to the light source
                 //float emmision = texture(continuous_spectra, vec2( ( ( (float(i)/camera_shift_factor*light_shift)-300.0)/(5.0) ), float(light.cont_id) ) / vec2(100.0,10.0) ).r;
-                float emmision = texture(continuous_spectra, vec2( -3*log( float(i)*1e-9/(camera_shift_factor*light_shift) ), float(light.cont_id) ) / vec2(100.0,10.0) ).r;
+                float emmision = texture(continuous_spectra, vec2( -3*log( float(i)*1e-9/light_shift  ), float(light.cont_id) ) / vec2(100.0,10.0) ).r;
                 
                 // Diffuse
                 xyz += diffuse_reflection *

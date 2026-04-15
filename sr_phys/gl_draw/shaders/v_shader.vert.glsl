@@ -1,6 +1,6 @@
 #version 430 core
 
-#define MAX_WL_LEN 128
+#define MAX_WL_LEN 1024
 
 // Mesh properties
 layout (location = 0) in vec4 mesh_pos;
