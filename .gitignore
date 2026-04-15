@@ -1,0 +1,10 @@
+lib/include/*
+lib/src/*
+build/
+*.old
+*.so
+draw.c
+
+!lib/include/glad/
+!lib/include/KHR/
+!lib/src/gl.c

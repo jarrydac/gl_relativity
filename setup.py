@@ -2,14 +2,14 @@ from setuptools import Extension, setup
 from Cython.Build import cythonize
 
 extensions = [
-    Extension("sr_draw", ["draw.pyx"],
+    Extension("gl_relativity", ["draw.pyx"],
         include_dirs=["include","lib/include"],
-	libraries=["sr_draw"],
+	libraries=["gl_relativity"],
 	library_dirs=["./"]	
     ),
 ]
 setup(
-    name="Cython modules for gl_draw",
+    name="Cython modules for gl_relativity",
     ext_modules=cythonize(extensions),
 )
 
