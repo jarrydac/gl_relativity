@@ -4,6 +4,7 @@ build/
 *.old
 *.so
 draw.c
+*.obj
 
 !lib/include/glad/
 !lib/include/KHR/

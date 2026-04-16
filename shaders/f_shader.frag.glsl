@@ -59,6 +59,7 @@ float piecewise_gaussian(float x, float mu, float tau1, float tau2){
 }
 
 vec3 rel_rgb(float intensity, float wavelength){
+    
     // Position addition formula?
     vec3 rel_vel = vel - cam_vel;
 
@@ -90,6 +91,8 @@ vec3 rel_rgb(float intensity, float wavelength){
 void main(){
     //FragColor = vec4(1.0);
     //return;
+    
+    vec3 cam_vel_view = mat3(transpose(inverse(view))) * cam_vel; 
 
     T_rgb_xyz[0] = vec3(0.49000, 0.17697, 0.00000);
     T_rgb_xyz[1] = vec3(0.31000, 0.81240, 0.01000);
@@ -98,7 +101,7 @@ void main(){
     
     vec3 transformed_norm = norm;
 
-    vec3 rel_vel = vel - cam_vel;
+    vec3 rel_vel = vel - cam_vel_view;
     float cam_gamma = gamma( rel_vel );
     float cam_theta = angle( rel_vel, pos_st.yzw );
     float camera_shift_factor = shift_factor(cam_gamma, cam_theta);
@@ -122,7 +125,7 @@ void main(){
         vec3 light_pos = light_pos4.xyz / light_pos4.w;
         
         vec3 v =  -vel;
-        vec3 v_prime = -vel + cam_vel ;
+        vec3 v_prime = -vel + cam_vel_view ;
         
         float cos_theta = dot( v, light_pos-pos_st.yzw ) / (sqrt( dot(v,v) ) * sqrt( dot(light_pos-pos_st.yzw, light_pos-pos_st.yzw)) ); 
 

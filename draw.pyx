@@ -1,6 +1,5 @@
 #cython: language_level=3
 import copy
-import pygame
 import math
 import numpy as np
 cimport numpy as cnp
@@ -411,10 +410,10 @@ def init():
     global SPHERE_MESH
     camera = _Camera()
 
-    v_shader = open('sr_phys/gl_draw/shaders/wl_vert_shader.glsl', 'r')
-    f_shader = open('sr_phys/gl_draw/shaders/f_shader.frag.glsl', 'r')
+    v_shader = open('shaders/wl_vert_shader.glsl', 'r')
+    f_shader = open('shaders/f_shader.frag.glsl', 'r')
     
-    cie = np.loadtxt('sr_phys/gl_draw/CIE_xyz_1931_2deg.csv', delimiter=",", usecols=(1,2,3))
+    cie = np.loadtxt('CIE_xyz_1931_2deg.csv', delimiter=",", usecols=(1,2,3))
     cdef vec3[471] cie_data = np.ascontiguousarray(cie)
 
     sr_draw_init( 

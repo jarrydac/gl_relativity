@@ -89,6 +89,7 @@ void set(float s, float clip){
 */
 void main(){
     norm = mat3(transpose(inverse(model))) * mat3(transpose(inverse(view))) * mesh_norm; 
+    vel = mat3(transpose(inverse(model))) * mat3(transpose(inverse(view))) * vel; 
 
     int wl_l;       // Worldline length
     float a;        // Texture position
