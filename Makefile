@@ -13,7 +13,7 @@ INCLUDE_DIRS = -Iinclude
 LIB_INCLUDE = -Ilib/include
 LIB_SRC = lib/src/*
 
-libgl_relativity: $(objects) $(BUILD_DIR)/gl.o $(LIB_DIR)/include/cglm/cglm.h
+libgl_relativity: $(LIB_DIR)/include/cglm/cglm.h $(objects) $(BUILD_DIR)/gl.o 
 	ar rcs $@.so $^ 
 #	gcc -Wall -Wextra $(LINKER_FLAGS) $(LIB_INCLUDE) $(INCLUDE_DIRS) $(LIB_SRC) $^ --static -o $@ 
 
