@@ -44,6 +44,9 @@ class Worldline:
         self._events = [np.array(event[0:4]).copy() for event in events]
         self._events.sort(key = lambda ev: ev[0])
 
+draw.inv_c = 1.0/15.0
+#draw.inv_c = 0
+
 # Main 
 pygame.init()
 pygame.display.gl_set_attribute(pygame.GL_CONTEXT_MAJOR_VERSION, 4)
@@ -57,17 +60,16 @@ def planck_func(T, scale):
     def planck(lam):
         ratio = bk/(lam*T)
         if ratio > 700:
-            print(lam, 0)
             return 0
 
         val = ( lam**5 * math.expm1(ratio) )**-1 / scale
-        print(lam, val)
         return val
     
     return planck
 
-light3 = draw.Light( np.array([-150,15,100]), planck_func(4000, 5e30), None)
-light4 = draw.Light( np.array([10,15,50]), planck_func(15000, 1e34), None)
+#light3 = draw.Light( np.array([-150,15,100]), planck_func(4000, 5e30), None )
+#light4 = draw.Light( np.array([10,15,50]), planck_func(15000, 1e34), None)
+light5 = draw.Light( np.array([0,10,50]), None, np.array( [[500,1]] ) )
 
 def track(t):
     speed = 2*math.pi/10
@@ -91,7 +93,6 @@ sr_objects = []
 
 for i in range(30):
     wl = wl_orbit(i/3)
-    print( wl )
     # Create objects, to scale (identity model matrix).
     sr_objects.append( draw.Object( wl, mesh, np.array([
         [1,0,0,0],
@@ -161,11 +162,12 @@ while running:
     # Update clock
     dt = clock.tick(30) / 1000
     time += dt
-
+    
     # Crash out
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             running = False
 
+draw.close()
 pygame.quit()
 sys.exit()

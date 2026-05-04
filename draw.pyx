@@ -10,7 +10,7 @@ from libc.stdlib cimport malloc, free
 from libc.string cimport memcpy
 
 camera = None
-c = 30.0
+inv_c = 1.0/30.0
 
 BOX_MESH = None;
 SPHERE_MESH = None;
@@ -31,7 +31,6 @@ cdef extern from 'include/gl_draw.h':
     int sr_draw_init( 
         char* v_shader,  
         char* f_shader, 
-        char* c_shader,
         vec3[471] cie_data
         )
     void sr_close();
@@ -53,8 +52,8 @@ cdef extern from 'include/camera.h':
     float camera_get_time();
     void camera_set_time( float time );
 
-    float camera_get_c();
-    void camera_set_c( float );
+    float camera_get_inv_c();
+    void camera_set_inv_c( float );
 
     void camera_set_lorentz( mat4 );
     void camera_get_lorentz( mat4 );
@@ -79,7 +78,7 @@ cdef extern from 'include/mesh.h':
 
 cdef extern from 'include/objects.h':
     ctypedef struct sr_obj_wl:
-        vec4* events; # MAX_WL_LEN 128
+        vec4* events; # MAX_WL_LEN 1024
         int length;
 
     ctypedef struct sr_object:
@@ -129,13 +128,13 @@ cdef extern from 'include/lights.h':
     
 def lorentz_matrix(vel):
     v = np.linalg.norm( vel )
-    gamma = 1/(math.sqrt(1-(v**2/c**2)))
+    gamma = 1/(math.sqrt(1-(v**2*inv_c**2)))
     gamma_f = (gamma**2)/(1+gamma)
 
     # Wikipeda... Lorentz Transforms
-    beta_x = vel[0]/c
-    beta_y = vel[1]/c
-    beta_z = vel[2]/c
+    beta_x = vel[0]*inv_c
+    beta_y = vel[1]*inv_c
+    beta_z = vel[2]*inv_c
 
     matrix = [
             [ gamma, -gamma*beta_x, -gamma*beta_y, -gamma*beta_z ],
@@ -203,6 +202,8 @@ class _Camera:
 
 # An (immutable) mesh of verticies and indicies
 cdef class Mesh:
+    meshes = []
+
     cdef sr_mesh* thisptr
 
     def __cinit__(self, offsets, normals, indicies):
@@ -216,8 +217,6 @@ cdef class Mesh:
 
         if NULL in (self.thisptr, offset_array, index_array):
             raise MemoryError()
-
-        print(normals)
 
         # Read in data
         for i in range( offsets_len ):
@@ -239,10 +238,14 @@ cdef class Mesh:
                      index_array, indicies_len,
                      offset_array, offsets_len
                      )
+        
+        Mesh.meshes.append(self)
 
     def __dealloc__(self):
         if self.thisptr is not NULL:
             sr_delete_mesh( self.thisptr )
+            free( self.thisptr )
+            self.thisptr = NULL
 
     cdef sr_mesh* get_pointer(self):
         return self.thisptr
@@ -286,6 +289,8 @@ cdef sr_obj_wl* _wl_to_obj_wl_ptr(wl):
 # A (moveable) object, containing the minimum required data to draw.
 # ie. an anchoring worldline, a mesh and a model matrix
 cdef class Object:
+    objects = []
+
     cdef sr_object* thisptr
     cdef public wl
 
@@ -307,10 +312,14 @@ cdef class Object:
         free(wl_ptr)
 
         self.wl = wl
+        
+        Object.objects.append(self)
 
     def __dealloc__(self):
         if self.thisptr is not NULL:
             sr_object_delete( self.thisptr )
+            free( self.thisptr )
+            self.thisptr = NULL
 
     def _update_wl(self):
         cdef sr_obj_wl* wl_ptr = _wl_to_obj_wl_ptr(self.wl)
@@ -326,6 +335,8 @@ cdef class Object:
 
 # Lights
 cdef class Light:
+    lights = []
+
     cdef sr_light* thisptr
     cdef sr_light_discrete_spectrum* disc_spec
     cdef sr_light_continuous_spectrum* cont_spec
@@ -345,7 +356,6 @@ cdef class Light:
 
         # Discrete spectra
         if peaks is not None:
-            print("peaks")
             self.disc_spec = <sr_light_discrete_spectrum*> \
                 malloc( sizeof(sr_light_discrete_spectrum) )
             if self.disc_spec is NULL:
@@ -361,14 +371,12 @@ cdef class Light:
 
         # Continuous Spectrum
         if cont_spec is not None:
-            print("cont")
             self.cont_spec = <sr_light_continuous_spectrum*> \
                         malloc( sizeof(sr_light_continuous_spectrum) )
             if self.cont_spec is NULL:
                 raise MemoryError
 
             for i in range(100):
-                print(i)
                 #samples[i] = cont_spec( (300+5*i)*1e-9 )
                 samples[i] = cont_spec( math.exp(-i/3) )
             
@@ -387,6 +395,8 @@ cdef class Light:
             raise Exception("Could not initialise light")
 
         sr_lights_add( self.thisptr )
+        
+        Light.lights.append(self)
         
     def __dealloc__(self):
         if self.disc_spec is not NULL:
@@ -419,11 +429,10 @@ def init():
     sr_draw_init( 
         v_shader.read().encode(), 
         f_shader.read().encode(), 
-        '',
         cie_data
     )
 
-    camera_set_c(c);
+    camera_set_inv_c(inv_c)
 
     BOX_MESH = Mesh.from_trimesh( trimesh.primitives.Box(
         extents=[1,1,1],
@@ -439,7 +448,18 @@ def init():
         radius=1
         ).to_mesh() ) 
     
-    return;
+    return
+
+def close():
+    # We need to keep track of our OpenGL objects, to destroy them before closing the window
+    for mesh in Mesh.meshes:
+        del mesh
+    for light in Light.lights:
+        del light
+    for obj in Object.objects:
+        del obj
+
+    sr_close()
 
 # Clear for next pass
 def clear( r=1.0, g=1.0, b=1.0 ):

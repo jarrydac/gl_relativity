@@ -17,8 +17,8 @@ float camera_get_time(void);
 void camera_set_time( float time );
 
 // Get and set speed of light
-float camera_get_c(void);
-void camera_set_c( float c );
+float camera_get_inv_c(void);
+void camera_set_inv_c( float inv_c );
 
 void camera_get_pos( vec3 position );
 void camera_set_pos( const vec3 position );

@@ -2,7 +2,7 @@
 
 #include <stdio.h>
 
-int sr_draw_init( char* v_shader_str, char* f_shader_str, char* c_shader_str, vec3 cie_data[471] ){
+int sr_draw_init( char* v_shader_str, char* f_shader_str, vec3 cie_data[471] ){
 
     // GLAD Init.
     int version = gladLoaderLoadGL();
@@ -34,4 +34,9 @@ void sr_clear(float r, float g, float b){
     glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
 }
 
-void sr_close(void); // TODO
+void sr_close(void){
+
+    //close 
+    sr_lights_close();
+    sr_objects_close();
+}

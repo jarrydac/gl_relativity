@@ -76,8 +76,13 @@ void set(float s, float clip){
     vec4 st_a = WL_TEXEL( int( floor(s*float(MAX_WL_LEN)) ) );
     vec4 st_b = WL_TEXEL( int( ceil(s*float(MAX_WL_LEN)) ) );
     vel = (st_b.yzw - st_a.yzw)/(st_b[0] - st_a[0]);
+    
+    if(inv_c == 0){
+        gl_Position = projection * vec4(pos_st.yzw, 1.0);
+    }else{
+        gl_Position = ST_PROJ( pos_st );
+    }
         
-    gl_Position = ST_PROJ( pos_st );
     gl_ClipDistance[0] = clip;
 }
 
@@ -121,6 +126,11 @@ void main(){
         a = mid[0] < 0.0 ? m : a;
         b = mid[0] > 0.0 ? m : b;
     }    
+    
+    if(inv_c == 0){
+        set(b,0.0);
+        return;
+    }
 
     // Find INTERVAL = 0 by bisection.
     a = 0.0;

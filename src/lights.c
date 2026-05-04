@@ -53,6 +53,7 @@ int sr_lights_init(vec3 cie_data[471]){
 
 void sr_lights_close(){
    glDeleteTextures(1,&spec_tex); 
+   glDeleteTextures(1, &cie_tex);
 }
 
 int sr_lights_discrete_spectrum_init(
@@ -95,10 +96,6 @@ int sr_lights_continuous_spectrum_init(
 ){
     if(cont_spec_len > MAX_LIGHTS) return 1;
     spec->id = cont_spec_len++;
-    
-    for(int i=0; i<100; i++){
-        printf("%f4.\n", samples[i]);
-    }
 
     glBindTexture(GL_TEXTURE_2D,spec_tex);
     glTexSubImage2D(
@@ -157,7 +154,7 @@ void sr_lights_load_uniforms(GLuint program){
         
         if(lights[i]->disc_spectrum){
             glUniform1i( glGetUniformLocation(program, peak_len_loc_str), lights[i]->disc_spectrum->length);
-            for(int j=0; j<lights[i]->disc_spectrum->length; j++){
+            for(uint j=0; j<lights[i]->disc_spectrum->length; j++){
                 char peak_loc_str[100];
                 sprintf(peak_loc_str, "lights[%d].peaks[%d]", i, j);
                 glUniform2fv( glGetUniformLocation(program, peak_loc_str), 1, (float*) lights[i]->disc_spectrum->peaks[j]);

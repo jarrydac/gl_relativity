@@ -1,6 +1,5 @@
 #include "../include/shaders.h"
 
-#include <stdlib.h>
 #include <stdio.h>
 
 #include "../include/camera.h"
@@ -15,7 +14,6 @@ static struct {
     int proj;
     int t;
     int cam_t;
-    int c;
     int inv_c;
     int wl_id;
     int wl_i;
@@ -63,7 +61,6 @@ int sr_shaders_init( char* vertex_shader_src, char* fragment_shader_src ){
     obj_program_uniforms.model = glGetUniformLocation(obj_program, "model");
     obj_program_uniforms.view = glGetUniformLocation(obj_program, "view");
     obj_program_uniforms.proj = glGetUniformLocation(obj_program, "projection");
-    obj_program_uniforms.c = glGetUniformLocation(obj_program, "sr_c");
     obj_program_uniforms.inv_c = glGetUniformLocation(obj_program, "inv_c");
     obj_program_uniforms.t = glGetUniformLocation(obj_program, "time");
     obj_program_uniforms.cam_t = glGetUniformLocation(obj_program, "cam_t");
@@ -125,8 +122,7 @@ GLuint sr_link_program( sr_shader* shaders, int num ){
 void sr_use_obj_program( mat4 model, unsigned int wl_id, vec2 wavelength ){
     glUseProgram(obj_program);
 
-    glUniform1f(obj_program_uniforms.c, camera_get_c());
-    glUniform1f(obj_program_uniforms.inv_c, 1.0f/camera_get_c()); // NEW! For new vec shader
+    glUniform1f(obj_program_uniforms.inv_c, camera_get_inv_c()); // NEW! For new vec shader
     glUniform1f(obj_program_uniforms.t, camera_get_time());
     glUniform1f(obj_program_uniforms.cam_t, camera_get_time());
     glUniformMatrix4fv(obj_program_uniforms.proj, 1, GL_FALSE, (float*)obj_proj_mat);

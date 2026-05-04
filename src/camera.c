@@ -1,7 +1,7 @@
 #include "../include/camera.h"
 
 static struct  {
-    float c;
+    float inv_c;
     float time;
     vec3 position;
     vec3 velocity;
@@ -55,12 +55,12 @@ float camera_get_time(void){
     return camera.time;
 }
 
-void camera_set_c( float c ){
-    camera.c = c;
+void camera_set_inv_c( float inv_c ){
+    camera.inv_c = inv_c;
 }
 
-float camera_get_c(void){
-    return camera.c;
+float camera_get_inv_c(void){
+    return camera.inv_c;
 }
 
 void camera_set_lorentz( const mat4 lorentz ){
@@ -85,3 +85,5 @@ void camera_view_matrix( mat4 view ){
     camera_look_direction(camera.pitch, camera.yaw, camera_dir);
     glm_look(camera.position, camera_dir, camera.up, view);
 }
+
+void camera_close(void);
