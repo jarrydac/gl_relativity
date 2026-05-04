@@ -1,6 +1,12 @@
 #version 430 core
+
 #define MAX_PEAKS 10
 #define MAX_LIGHTS 10
+
+#define CIE_START 360
+#define CIE_END 890
+
+#define SPECTRUM_LENGTH 100
 
 in vec4 pos_st;
 in vec3 norm;
@@ -12,9 +18,7 @@ uniform vec3 cam_vel;
 uniform mat4 lorentz; 
 uniform mat4 view;
 uniform mat4 model;
-// Given in (intensity, wavelength)
-uniform vec2 wavelength;
-uniform float sr_c;
+uniform float inv_c;
 
 layout (binding=2) uniform sampler2D continuous_spectra;
 layout (binding=3) uniform sampler1D cie_data;
@@ -23,7 +27,7 @@ struct light {
     vec3 pos;
     // Continuous Spectrum
     int cont_id;
-    // Discrete Spectrum
+    // Discrete Spectrum (nanometers)
     vec2 peaks[MAX_PEAKS];
     int peaks_len;
 };
@@ -34,58 +38,26 @@ uniform int lights_len;
 mat3 T_rgb_xyz;
 mat3 T_xyz_rgb;
 
-float gamma(vec3 vel){
-    return pow( ( 1 - ( length(vel)*length(vel) ) / (sr_c*sr_c) ), -0.5);
-}
-
-float shift_factor(float gamma, float theta){
-    return gamma*( 1+sqrt(1-1/(gamma*gamma))*cos(theta) );
-}
-
 float angle(vec3 a, vec3 b){
     float norm_dot = dot( normalize(a), normalize(b) );
     float angle = acos( norm_dot );
     return sign(norm_dot) * angle;
 }
 
-
-// Piecewise Gaussian, which is asymmetric about mu, with variance of tau1 on
-// left and tau2 on the right.
-float piecewise_gaussian(float x, float mu, float tau1, float tau2){
-    float center = x-mu;
-    float left = exp(-0.5 * (tau1*tau1) * center*center);
-    float right = exp(-0.5 * (tau2*tau2) * center*center);
-    return step(x,mu) * right + (1-step(x,mu)) * left;
+// N.B. Wavelength in meters
+float sample_light_spectrum(int cont_id, float wavelength){
+    vec2 scale_factor = vec2(SPECTRUM_LENGTH,MAX_LIGHTS);
+    // The first coordinate is an inverse transform of the transform used when the spectrum is stored,
+    // in order to allow sampling a wider range of the spectrum.
+    vec2 tex_coords = vec2( -3*log( wavelength ), float(cont_id) ) / scale_factor;
+    return texture(continuous_spectra, tex_coords).r;
 }
 
-vec3 rel_rgb(float intensity, float wavelength){
-    
-    // Position addition formula?
-    vec3 rel_vel = vel - cam_vel;
-
-    float gamma = gamma( rel_vel );
-    float theta = angle( rel_vel, pos_st.yzw );
-    float factor = shift_factor(gamma, theta);
-    
-    vec2 color_v = vec2(intensity, wavelength) * vec2(1.0, factor);
-    
-    float X_data =  +1.056*piecewise_gaussian( color_v[1], 599.8, 0.0264, 0.0323)
-                    +0.362*piecewise_gaussian( color_v[1], 442.0, 0.0624, 0.0374)
-                    -0.065*piecewise_gaussian( color_v[1], 501.1, 0.0490, 0.382);
-
-    float Y_data =  +0.821*piecewise_gaussian( color_v[1], 568.8, 0.0212, 0.0247)
-                    +0.286*piecewise_gaussian( color_v[1], 530.9, 0.0613, 0.0322);
-
-    float Z_data =  +1.217*piecewise_gaussian( color_v[1], 437.0, 0.0845, 0.0278)
-                    +0.681*piecewise_gaussian( color_v[1], 459.0, 0.0385, 0.0725);
-
-    vec3 rgb = T_xyz_rgb * vec3(X_data, Y_data, Z_data) * color_v[0];
-    
-    float r = max(rgb.r, 0.0);
-    float g = max(rgb.g, 0.0);
-    float b = max(rgb.b, 0.0);
-    
-    return vec3(r,g,b);
+// N.B. Wavelength in meters
+vec3 sample_cie_data(float wavelength){
+    float scale_factor = CIE_END-CIE_START;
+    float tex_coord = (wavelength*1e9 - CIE_START)/scale_factor;    
+    return texture(cie_data, tex_coord).xyz;
 }
 
 void main(){
@@ -101,11 +73,6 @@ void main(){
     
     vec3 transformed_norm = norm;
 
-    vec3 rel_vel = vel - cam_vel_view;
-    float cam_gamma = gamma( rel_vel );
-    float cam_theta = angle( rel_vel, pos_st.yzw );
-    float camera_shift_factor = shift_factor(cam_gamma, cam_theta);
-
     float ambient_wavelength = 600.0;
     float ambient_intensity = 0.0;
 
@@ -114,51 +81,77 @@ void main(){
     float diffuse_reflection = 0.8;   
 
     // Ambient lighting
-    vec3 total_rgb = ambient_reflection * rel_rgb(ambient_intensity, ambient_wavelength);
+    //vec3 total_rgb = ambient_reflection * rel_rgb(ambient_intensity, ambient_wavelength);
+    vec3 total_rgb = vec3(0.0);
 
     for(int i=0; i<lights_len; i++){
         light light = lights[i];
         
-        //float light_gamma = gamma( -vel );
-        //float light_theta = angle( -vel, light_pos - pos_st.yzw );
+        //
+        // Calculate the factors between the observer, the fragment and the light source
+        //
         vec4 light_pos4 = view * vec4(light.pos,1.0);
-        vec3 light_pos = light_pos4.xyz / light_pos4.w;
+
+        // lab position of the fragment
+        vec3 pos_fragment_lab = pos_st.yzw;
+        // cam-frame position of the fragment
+        vec3 pos_fragment_cam = (lorentz * pos_st).yzw;
+        // lab position of the light
+        vec3 pos_light_lab = light_pos4.xyz / light_pos4.w;
+        // cam position of the light
+        // TODO: THIS APPROXIMATION IS VERY WRONG, BUT IM NOT SURE HOW TO RESOLVE IT WITHOUT
+        // FULL ON RAY TRACING
+        vec3 pos_light_cam = (lorentz * vec4(0.0,pos_light_lab)).yzw;
+
+        // velocity of the fragment in the lab frame
+        vec3 vel_fragment_lab = vel;
+        // velocity of the fragment in the camera frame
+        // TODO: Believe this should be the more complicated velocity addition formula
+        vec3 vel_fragment_cam = vel - cam_vel_view;
+            
+        // Angle of the line between emitter and fragment, and fragment velocity
+        float cos_theta = dot( normalize(vel_fragment_lab), normalize(pos_light_lab-pos_fragment_lab) );
         
-        vec3 v =  -vel;
-        vec3 v_prime = -vel + cam_vel_view ;
+        // Angle between the observer and the fragment velocity, in the camera frame
+        float cos_theta_prime = dot( normalize(vel_fragment_cam), normalize(pos_fragment_cam) );
+
+        float light_fragment_shift = 1 / ( 1 - length(vel_fragment_lab)*cos_theta*inv_c );
+        float fragment_observer_shift = ( 1 + length(vel_fragment_cam)*cos_theta_prime*inv_c );
         
-        float cos_theta = dot( v, light_pos-pos_st.yzw ) / (sqrt( dot(v,v) ) * sqrt( dot(light_pos-pos_st.yzw, light_pos-pos_st.yzw)) ); 
+        float light_observer_shift = light_fragment_shift * fragment_observer_shift;
+        float observer_light_shift = 1/light_observer_shift;
 
-        float cos_theta_prime = dot(v_prime,pos_st.yzw) / ( sqrt( dot(v_prime,v_prime) ) * sqrt( dot(pos_st.yzw,pos_st.yzw) ) );
-
-        float light_shift = ( 1 - sqrt( dot(v,v) )*cos_theta/sr_c ) / ( 1 + sqrt( dot(v_prime, v_prime) )*cos_theta_prime/sr_c );
-
-        camera_shift_factor = 1/( 1 - sqrt(dot(v_prime,v_prime))*cos_theta_prime/sr_c );
-
-        //light_shift = 1;
-        camera_shift_factor = 1;
-
-        vec3 viewer_dir = normalize( -pos_st.yzw );
-        vec3 reflect_dir = reflect( normalize( pos_st.yzw - light_pos ), transformed_norm );
+        vec3 viewer_dir = normalize( -pos_fragment_cam );
+        vec3 reflect_dir = reflect( normalize( pos_fragment_cam - pos_light_cam ), transformed_norm );
         int speculence = 2;
         float spec = pow(max(dot(viewer_dir, reflect_dir), 0.0), speculence);
+
         //
         // Discrete Lighting
         //
         for(int j=0; j<light.peaks_len; j++){
-            float light_wavelength = light.peaks[j].x;
-            float light_intensity = light.peaks[j].y;
+            // Work forward from the emission wavelength (in meters) to the observed wavelength
+            float light_lambda = light.peaks[j].x * 1e-9;
+            float observer_lambda = light_lambda * light_observer_shift;
+
+            float emission_intensity = light.peaks[j].y;
+            
+            // X,Y,Z sensitivities to the given wavelength
+            vec3 cie_sensitivities = sample_cie_data(observer_lambda);
+
 
             // Diffuse lighting
             total_rgb += 
                 diffuse_reflection * 
-                max(dot( normalize( light_pos-pos_st.yzw ), transformed_norm ),0.0) * 
-                rel_rgb( light_intensity, light_wavelength*light_shift );
+                max(dot( normalize( pos_light_cam - pos_fragment_cam ), transformed_norm ),0.0) * 
+                emission_intensity * 
+                T_xyz_rgb * cie_sensitivities;
 
             // Specular Lighting
-            total_rgb += specular_reflection * spec 
-               * rel_rgb( light_intensity, light_wavelength*light_shift );
-            
+            total_rgb += specular_reflection * 
+                spec * 
+                emission_intensity * 
+                T_xyz_rgb * cie_sensitivities;
         }
 
         //
@@ -166,33 +159,37 @@ void main(){
         //
         if(light.cont_id != -1){
             vec3 xyz = vec3(0.0);
-            for(int i=360; i<830; i++){
+
+            for(int i=CIE_START; i<CIE_END; i++){
+                // Step through observer wavelengths in CIE data (in meters)
                 // We'll work from the observer frame backward to the light source
-                //float emmision = texture(continuous_spectra, vec2( ( ( (float(i)/camera_shift_factor*light_shift)-300.0)/(5.0) ), float(light.cont_id) ) / vec2(100.0,10.0) ).r;
-                float emmision = texture(continuous_spectra, vec2( -3*log( float(i)*1e-9/light_shift  ), float(light.cont_id) ) / vec2(100.0,10.0) ).r;
+                float observer_lambda = float(i)*1e-9;
+                float light_lambda = observer_lambda * observer_light_shift;
+
+                // Intensity of the observer wavelength at the light source
+                float emission_intensity = sample_light_spectrum(light.cont_id, light_lambda);
                 
                 // Diffuse
                 xyz += diffuse_reflection *
-                    max(dot( normalize( light_pos-pos_st.yzw ), norm ),0.0) * 
+                    max(dot( normalize(pos_light_lab - pos_fragment_cam ), norm ),0.0) * 
                     texture( cie_data, float( i-360 )/470.0 ).xyz *
-                    diffuse_reflection * // eval diffuse reflection at cam-shifted wl.
-                    emmision;
+                    diffuse_reflection * // TODO: eval diffuse reflection at cam-shifted wl.
+                    emission_intensity;
                 // Spectral
                 xyz += specular_reflection * 
                     spec * 
                     texture(cie_data, float( i-360 )/470.0 ).xyz *
                     specular_reflection *
-                    emmision;
+                    emission_intensity;
             }
 
             total_rgb += T_xyz_rgb * xyz;
         }
         
-        
         float r = clamp(total_rgb.r, 0.0, 1.0);
         float g = clamp(total_rgb.g, 0.0, 1.0);
         float b = clamp(total_rgb.b, 0.0, 1.0);
         
-        FragColor = vec4( vec3(r,g,b)*vec3(1.0,1.0,1.0), 1.0f);
+        FragColor = vec4(r,g,b,1.0);
     }
 }
