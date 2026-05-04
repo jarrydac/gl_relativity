@@ -28,6 +28,8 @@ $(BUILD_DIR)/gl.o: lib/src/gl.c
 	
 # Download cglm
 $(LIB_DIR)/include/cglm/cglm.h:
+# Explicitly create build dir
+	mkdir $(BUILD_DIR)
 	wget -O $(BUILD_DIR)/cglm.tar.gz https://github.com/recp/cglm/archive/refs/tags/v0.9.6.tar.gz
 	tar -xzf $(BUILD_DIR)/cglm.tar.gz -C $(BUILD_DIR)/
 	mv $(BUILD_DIR)/cglm-* $(BUILD_DIR)/cglm

@@ -25,6 +25,7 @@ Install:
 - [trimesh](https://trimesh.org/)
 - [numpy](https://numpy.org/)
 - [cython](https://cython.org/)
+- [setuptools](https://pypi.org/project/setuptools/)
 
 1. Make the C library using the Makefile. (This will download [cglm](https://github.com/recp/cglm).)
 2. Build the cython module using setup.py (i.e. `python setup.py build_ext --inplace`)
