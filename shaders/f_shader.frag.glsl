@@ -60,11 +60,26 @@ vec3 sample_cie_data(float wavelength){
     return texture(cie_data, tex_coord).xyz;
 }
 
+// https://en.wikipedia.org/wiki/Velocity-addition_formula#General_configuration
+vec3 velocity_addition(vec3 u, vec3 v){
+    vec3 u_para = dot(u, normalize(v)) * normalize(v); 
+    vec3 u_perp = u-u_para;
+    
+    float factor = 1 + dot(u,v)*inv_c*inv_c;
+    
+    vec3 u_prime_para = (u_para + v) / factor;    
+    vec3 u_prime_perp = sqrt( 1-dot(v,v)*inv_c*inv_c ) * u_perp / factor;
+
+    return u_prime_para+u_prime_perp;
+}
+
 void main(){
     //FragColor = vec4(1.0);
     //return;
     
     vec3 cam_vel_view = mat3(transpose(inverse(view))) * cam_vel; 
+    vec3 vel_view = mat3(transpose(inverse(view))) * vel; 
+
 
     T_rgb_xyz[0] = vec3(0.49000, 0.17697, 0.00000);
     T_rgb_xyz[1] = vec3(0.31000, 0.81240, 0.01000);
@@ -81,8 +96,7 @@ void main(){
     float diffuse_reflection = 0.8;   
 
     // Ambient lighting
-    //vec3 total_rgb = ambient_reflection * rel_rgb(ambient_intensity, ambient_wavelength);
-    vec3 total_rgb = vec3(0.0);
+    vec3 total_rgb = ambient_reflection * T_rgb_xyz * sample_cie_data(ambient_wavelength);
 
     for(int i=0; i<lights_len; i++){
         light light = lights[i];
@@ -99,18 +113,16 @@ void main(){
         // lab position of the light
         vec3 pos_light_lab = light_pos4.xyz / light_pos4.w;
         // cam position of the light
-        // TODO: THIS APPROXIMATION IS VERY WRONG, BUT IM NOT SURE HOW TO RESOLVE IT WITHOUT
-        // FULL ON RAY TRACING
+        // TODO: THIS APPROXIMATION IS WRONG?
         vec3 pos_light_cam = (lorentz * vec4(0.0,pos_light_lab)).yzw;
 
         // velocity of the fragment in the lab frame
-        vec3 vel_fragment_lab = vel;
+        vec3 vel_fragment_lab = vel_view;
         // velocity of the fragment in the camera frame
-        // TODO: Believe this should be the more complicated velocity addition formula
-        vec3 vel_fragment_cam = vel - cam_vel_view;
+        vec3 vel_fragment_cam = velocity_addition(vel_view, -cam_vel_view);
             
         // Angle of the line between emitter and fragment, and fragment velocity
-        float cos_theta = dot( normalize(vel_fragment_lab), normalize(pos_light_lab-pos_fragment_lab) );
+        float cos_theta = dot( normalize(vel_fragment_lab), normalize(pos_fragment_lab-pos_light_lab) );
         
         // Angle between the observer and the fragment velocity, in the camera frame
         float cos_theta_prime = dot( normalize(vel_fragment_cam), normalize(pos_fragment_cam) );
@@ -172,13 +184,13 @@ void main(){
                 // Diffuse
                 xyz += diffuse_reflection *
                     max(dot( normalize(pos_light_lab - pos_fragment_cam ), norm ),0.0) * 
-                    texture( cie_data, float( i-360 )/470.0 ).xyz *
+                    sample_cie_data(observer_lambda) *
                     diffuse_reflection * // TODO: eval diffuse reflection at cam-shifted wl.
                     emission_intensity;
                 // Spectral
                 xyz += specular_reflection * 
                     spec * 
-                    texture(cie_data, float( i-360 )/470.0 ).xyz *
+                    sample_cie_data(observer_lambda) *
                     specular_reflection *
                     emission_intensity;
             }

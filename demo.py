@@ -69,7 +69,7 @@ def planck_func(T, scale):
 
 light3 = draw.Light( np.array([150,15,100]), planck_func(4000, 5e30), None )
 light4 = draw.Light( np.array([10,15,50]), planck_func(15000, 1e34), None)
-light5 = draw.Light( np.array([0,10,50]), None, np.array( [[500,0.2]] ) )
+light5 = draw.Light( np.array([0,10,0]), None, np.array( [[500,0.2]] ) )
 
 def track(t):
     speed = 2*math.pi/10
