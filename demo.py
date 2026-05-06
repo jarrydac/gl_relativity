@@ -11,7 +11,11 @@
 # Jarrydac. 2026-04-16
 #
 
-import gl_relativity as draw
+import gl_relativity_py
+from gl_relativity_py import draw, camera
+
+from gl_relativity_py.lights import Light
+from gl_relativity_py.objects import Mesh, Object, SPHERE_MESH
 
 from enum import Enum
 
@@ -44,15 +48,15 @@ class Worldline:
         self._events = [np.array(event[0:4]).copy() for event in events]
         self._events.sort(key = lambda ev: ev[0])
 
-draw.inv_c = 1.0/15.0
-#draw.inv_c = 0
 
 # Main 
 pygame.init()
 pygame.display.gl_set_attribute(pygame.GL_CONTEXT_MAJOR_VERSION, 4)
 pygame.display.gl_set_attribute(pygame.GL_CONTEXT_MINOR_VERSION, 3)
 screen = pygame.display.set_mode(SIZE, pygame.OPENGL | pygame.DOUBLEBUF)
-draw.init()
+
+gl_relativity_py.init()
+camera.set_inv_c( 1.0/15.0 )
 
 # Black-body spectrum, according to Planck's Equation.
 bk = (3e8*6.626e-34)/1.38e-23
@@ -67,9 +71,9 @@ def planck_func(T, scale):
     
     return planck
 
-light3 = draw.Light( np.array([150,15,100]), planck_func(4000, 5e30), None )
-light4 = draw.Light( np.array([10,15,50]), planck_func(15000, 1e34), None)
-light5 = draw.Light( np.array([0,10,0]), None, np.array( [[500,0.2]] ) )
+light3 = Light( np.array([150,15,100]), planck_func(4000, 5e30), None )
+light4 = Light( np.array([10,15,50]), planck_func(15000, 1e34), None)
+light5 = Light( np.array([0,10,0]), None, np.array( [[500,0.2]] ) )
 
 def track(t):
     speed = 2*math.pi/10
@@ -85,16 +89,16 @@ def wl_orbit(t_offset):
 
 # Read mesh from command line, or use default sphere.
 if len(sys.argv) == 1 or sys.argv[1] == "ball":
-    mesh = draw.SPHERE_MESH
+    mesh = SPHERE_MESH
 else:
-    mesh = draw.Mesh.from_file(sys.argv[1])
+    mesh = Mesh.from_file(sys.argv[1])
     
 sr_objects = []
 
 for i in range(30):
     wl = wl_orbit(i/3)
     # Create objects, to scale (identity model matrix).
-    sr_objects.append( draw.Object( wl, mesh, np.array([
+    sr_objects.append( Object( wl, mesh, np.array([
         [1,0,0,0],
         [0,1,0,0],
         [0,0,1,0],
@@ -102,7 +106,7 @@ for i in range(30):
         ]))
     )
 
-sr_objects.append( draw.Object( Worldline( np.array([[-TIME,0.1,0.0,0.0],[TIME,0.0,0.0,0.0]]) ), mesh, np.array([
+sr_objects.append( Object( Worldline( np.array([[-TIME,0.1,0.0,0.0],[TIME,0.0,0.0,0.0]]) ), mesh, np.array([
     [1,0,0,0],
     [0,1,0,0],
     [0,0,1,0],
@@ -149,10 +153,10 @@ while running:
     draw.clear(0.0, 0.0, 0.0)
 
     # Update camera
-    draw.camera.pos = player.pos 
-    draw.camera.vel = player.vel 
-    draw.camera.angle = player.angle
-    draw.camera.time = time % TIME
+    camera.set_pos( player.pos )
+    camera.set_vel(player.set_vel)
+    camera.set_angle(player.set_angle)
+    camera.set_time(time % TIME)
     
     # Drawing
     for sr_object in sr_objects:

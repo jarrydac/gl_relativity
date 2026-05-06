@@ -4,7 +4,7 @@ from Cython.Build import cythonize
 import numpy as np
 
 extensions = [
-    Extension("gl_relativity", ["draw.pyx"],
+    Extension("*", ["gl_relativity_py/*.pyx"],
         include_dirs=["include",np.get_include(),"lib/include"],
 	    libraries=["gl_relativity"],
 	    library_dirs=["./"]	

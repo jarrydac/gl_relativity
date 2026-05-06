@@ -6,6 +6,9 @@ build/
 draw.c
 *.obj
 
+gl_relativity_py/*.c
+__pycache__/
+
 !lib/include/glad/
 !lib/include/KHR/
 !lib/src/gl.c
