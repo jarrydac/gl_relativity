@@ -4,8 +4,6 @@ LIB_DIR = lib
 
 objects = $(addprefix $(BUILD_DIR)/,gl_draw.o camera.o mesh.o objects.o shaders.o lights.o)
 
-libs = lib/src/gl.o
-
 LINKER_FLAGS = -lGL -lm
 
 INCLUDE_DIRS = -Iinclude
@@ -13,9 +11,9 @@ INCLUDE_DIRS = -Iinclude
 LIB_INCLUDE = -Ilib/include
 LIB_SRC = lib/src/*
 
-libgl_relativity: $(LIB_DIR)/include/cglm/cglm.h $(objects) $(BUILD_DIR)/gl.o 
-	ar rcs $@.so $^ 
-#	gcc -Wall -Wextra $(LINKER_FLAGS) $(LIB_INCLUDE) $(INCLUDE_DIRS) $(LIB_SRC) $^ --static -o $@ 
+libgl_relativity.so: $(LIB_DIR)/include/cglm/cglm.h $(objects) $(BUILD_DIR)/gl.o 
+#	ar rcs $@.o $^ 
+	gcc -Wall -Wextra $^ -shared -o $@ 
 
 # $@ = sr_draw
 # $^ = all the deps

@@ -1,6 +1,11 @@
 #include "../include/gl_draw.h"
-
 #include <stdio.h>
+
+#undef SR_DEBUG
+
+void pre_gl_call(const char *name, GLADapiproc apiproc, int len_arg, ...) {
+    printf("Calling: %s at %p (%d arguments)\n", name, apiproc, len_arg);
+}
 
 int sr_draw_init( char* v_shader_str, char* f_shader_str, vec3 cie_data[471] ){
 
@@ -11,6 +16,10 @@ int sr_draw_init( char* v_shader_str, char* f_shader_str, vec3 cie_data[471] ){
         return 1;
     }
     printf("Loaded OpenGL %d.%d\n", GLAD_VERSION_MAJOR(version), GLAD_VERSION_MINOR(version));
+
+    #ifdef SR_DEBUG
+        gladSetGLPreCallback(pre_gl_call);
+    #endif
 
     // Setup OpenGL state
     glViewport(0,0,800,800);

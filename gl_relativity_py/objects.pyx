@@ -42,6 +42,11 @@ def close():
     for mesh in Mesh.meshes:
         del mesh
         
+def sphere_mesh():
+    return SPHERE_MESH
+
+def box_mesh():
+    return BOX_MESH
 
 # An (immutable) mesh of verticies and indicies
 cdef class Mesh:
@@ -107,8 +112,6 @@ cdef class Mesh:
         
 # Read a WL into an sr_ob_wl on the heap.
 cdef sr_obj_wl* _wl_to_obj_wl_ptr(wl):
-    global c
-
     cdef sr_obj_wl* wl_ptr = <sr_obj_wl*> malloc( sizeof(sr_obj_wl) ) # note in objects.h array is fixed size so it is of course already allocated now.
     if wl_ptr is NULL:
         raise MemoryError()
@@ -138,6 +141,9 @@ cdef class Object:
     cdef public wl
 
     def __cinit__(self, wl, Mesh mesh, model=IDENTITY, color=np.array([1.0,500.0])):
+        if(mesh == None):
+            raise ValueError("Attempted to create object with no mesh!")
+
         # Break all the args down to appropriate structs
         cdef sr_obj_wl* wl_ptr = _wl_to_obj_wl_ptr(wl); 
         cdef sr_mesh* mesh_ptr = mesh.get_pointer();

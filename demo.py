@@ -15,7 +15,7 @@ import gl_relativity_py
 from gl_relativity_py import draw, camera
 
 from gl_relativity_py.lights import Light
-from gl_relativity_py.objects import Mesh, Object, SPHERE_MESH
+from gl_relativity_py.objects import Mesh, Object, sphere_mesh
 
 from enum import Enum
 
@@ -89,7 +89,7 @@ def wl_orbit(t_offset):
 
 # Read mesh from command line, or use default sphere.
 if len(sys.argv) == 1 or sys.argv[1] == "ball":
-    mesh = SPHERE_MESH
+    mesh = sphere_mesh()
 else:
     mesh = Mesh.from_file(sys.argv[1])
     
@@ -154,8 +154,8 @@ while running:
 
     # Update camera
     camera.set_pos( player.pos )
-    camera.set_vel(player.set_vel)
-    camera.set_angle(player.set_angle)
+    camera.set_vel(player.vel)
+    camera.set_angle(player.angle)
     camera.set_time(time % TIME)
     
     # Drawing

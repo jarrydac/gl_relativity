@@ -8,7 +8,7 @@
 - Stationary lights are placed in the scene with lab-frame coordinates.
 - The camera is placed in the lab-frame, with some velocity relative to the lab-frame.
 
-See `demo.py` for a basic application, using pygame.
+See `demo.sh` and `demo.py` for a basic application, using pygame.
 
 ## Effects
 
@@ -29,7 +29,7 @@ Install:
 
 1. Make the C library using the Makefile. (This will download [cglm](https://github.com/recp/cglm).)
 2. Build the cython module using setup.py (i.e. `python setup.py build_ext --inplace`)
-3. Copy the created `.so`, `shaders/` and `CIE_xyz_1931_2deg.csv` file alongside python project and `import gl_relativity`.
+3. Copy the created `.so`, `shaders/` and `CIE_xyz_1931_2deg.csv` file alongside python project and `import gl_relativity_py`.
 
 ## Caution
 
