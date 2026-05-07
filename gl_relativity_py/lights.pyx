@@ -6,20 +6,22 @@ import math
 import numpy as np
 cimport numpy as cnp
 
+from .util_cy cimport GLResource
+
 def init():
     pass
 
 def close():
-    for light in Light.lights:
-        del light
+    pass
 
 # Lights
-cdef class Light:
-    lights = []
-
+cdef class Light(GLResource):
     cdef sr_light* thisptr
     cdef sr_light_discrete_spectrum* disc_spec
     cdef sr_light_continuous_spectrum* cont_spec
+
+    def __init__(self, *args):
+        super().__init__()
 
     def __cinit__(self, vec3 pos, cont_spec, peaks):
         cdef float[:,::1] peak_arr;
@@ -76,13 +78,12 @@ cdef class Light:
 
         sr_lights_add( self.thisptr )
         
-        Light.lights.append(self)
-        
     def __dealloc__(self):
         if self.disc_spec is not NULL:
             sr_lights_discrete_spectrum_delete( self.disc_spec )
             free( self.disc_spec ) 
             self.disc_spec = NULL
+
         if self.cont_spec is not NULL:
             sr_lights_continuous_spectrum_delete( self.cont_spec )
             free( self.cont_spec ) 

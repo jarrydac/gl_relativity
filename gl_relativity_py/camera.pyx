@@ -1,6 +1,6 @@
 import numpy as np
 
-# Speed of light
+# Inverse speed of light
 inv_c = 1/30.0
 
 def init():
@@ -28,26 +28,26 @@ def lorentz_matrix(vel):
 
     return np.array(matrix, dtype='f')
 
-def get_pos(self):
+def get_pos():
     cdef vec3 pos
     camera_get_pos( pos )
     return pos
 
-def get_vel(self):
+def get_vel():
     cdef vec3 vel
     camera_get_vel( vel )
-    return self.vel
+    return vel
 
-def get_angle( self ):
+def get_angle():
     cdef float pitch 
     cdef float yaw
     camera_get_angle( &pitch, &yaw )
     return (pitch, yaw)
 
-def get_time( self ):
+def get_time():
     return camera_get_time()
 
-def get_lorentz_matrix( self ):
+def get_lorentz_matrix():
     cdef mat4 arr; 
     camera_get_lorentz( arr )
     return arr
@@ -55,21 +55,21 @@ def get_lorentz_matrix( self ):
 def get_inv_c():
     return camera_get_inv_c()
 
-def set_pos(  vec3 pos ):
+def set_pos( vec3 pos ):
     camera_set_pos( pos )
 
-def set_angle(  angle ):
+def set_angle( angle ):
     camera_set_angle( angle[0], angle[1] )
 
-def set_time(  time ):
+def set_time( time ):
     camera_set_time(time)
 
-def set_vel( vec3 vel):
+def set_vel( vec3 vel ):
     camera_set_vel( vel )
 
     lorentz_transform = lorentz_matrix(vel)
     cdef mat4 arr = np.ascontiguousarray(lorentz_transform, dtype='f')
     camera_set_lorentz( <mat4> arr )
     
-def set_inv_c(inv_c):
+def set_inv_c( inv_c ):
     camera_set_inv_c(inv_c)

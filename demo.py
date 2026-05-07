@@ -10,18 +10,15 @@
 #
 # Jarrydac. 2026-04-16
 #
-
 import gl_relativity_py
 from gl_relativity_py import draw, camera
 
 from gl_relativity_py.lights import Light
-from gl_relativity_py.objects import Mesh, Object, sphere_mesh
-
-from enum import Enum
+from gl_relativity_py.objects import Mesh, Object, Worldline, primitives 
+from gl_relativity_py.util import MAT4_IDENTITY
 
 import pygame
 import numpy as np
-import trimesh
 
 import sys
 import math
@@ -31,23 +28,10 @@ SIZE = (800,800)
 PLAYER_Z = 50
 TIME = 10
 
-class Player:
-    def __init__(self):
-        self.pos = np.array([0.0, 0.0, PLAYER_Z])
-        self.vel = np.array([0.0, 0.0, 0.0])
-        self.angle = np.array([0.0, -math.pi/2 ])
-
-    def update(self, dt):
-        pass
-
-class Worldline:
-    def __init__(self, events):
-        # Update the worldline
-        self.dirty = True
-
-        self._events = [np.array(event[0:4]).copy() for event in events]
-        self._events.sort(key = lambda ev: ev[0])
-
+pos = np.array([0.0, 0.0, PLAYER_Z])
+vel = np.array([0.0, 0.0, 0.0])
+angle = np.array([0.0, -math.pi/2 ])
+time = 0
 
 # Main 
 pygame.init()
@@ -89,7 +73,7 @@ def wl_orbit(t_offset):
 
 # Read mesh from command line, or use default sphere.
 if len(sys.argv) == 1 or sys.argv[1] == "ball":
-    mesh = sphere_mesh()
+    mesh = primitives["SPHERE"]
 else:
     mesh = Mesh.from_file(sys.argv[1])
     
@@ -98,80 +82,67 @@ sr_objects = []
 for i in range(30):
     wl = wl_orbit(i/3)
     # Create objects, to scale (identity model matrix).
-    sr_objects.append( Object( wl, mesh, np.array([
-        [1,0,0,0],
-        [0,1,0,0],
-        [0,0,1,0],
-        [0,0,0,1]
-        ]))
-    )
+    sr_objects.append( Object( wl, mesh, MAT4_IDENTITY) )
 
-sr_objects.append( Object( Worldline( np.array([[-TIME,0.1,0.0,0.0],[TIME,0.0,0.0,0.0]]) ), mesh, np.array([
-    [1,0,0,0],
-    [0,1,0,0],
-    [0,0,1,0],
-    [0,0,0,1]
-    ]))
-) 
-
-player = Player()
+sr_objects.append( Object( Worldline( np.array([[-TIME,0.1,0.0,0.0],[TIME,0.0,0.0,0.0]]) ), mesh, MAT4_IDENTITY))  
 
 clock = pygame.time.Clock()
 running = True
 dt = 0
-time = 0
 
 def poll_keyboard():
     keys = pygame.key.get_pressed()
     if keys[pygame.K_a]:
-        player.vel[0] += 0.1
+        vel[0] += 0.1
     if keys[pygame.K_d]:
-        player.vel[0] += -0.1
+        vel[0] += -0.1
     if keys[pygame.K_s]:
-        player.vel[2] += 0.1
+        vel[2] += 0.1
     if keys[pygame.K_w]:
-        player.vel[2] += -0.1
+        vel[2] += -0.1
     if keys[pygame.K_SPACE]:
-        player.vel[1] += -0.1
+        vel[1] += -0.1
     if keys[pygame.K_LSHIFT]:
-        player.vel[1] += 0.1
+        vel[1] += 0.1
 
     if keys[pygame.K_i]:
-        player.angle[0] += 0.01
+        angle[0] += 0.01
     if keys[pygame.K_k]:
-        player.angle[0] -= 0.01
+        angle[0] -= 0.01
     if keys[pygame.K_j]:
-        player.angle[1] -= 0.01
+        angle[1] -= 0.01
     if keys[pygame.K_l]:
-        player.angle[1] += 0.01
+        angle[1] += 0.01
 
+# MAIN LOOP
 while running:
+    # Handle input/logic
     poll_keyboard()
-    player.update(dt)
-
-    # Call the appropriate (visible) draw calls
-    draw.clear(0.0, 0.0, 0.0)
 
     # Update camera
-    camera.set_pos( player.pos )
-    camera.set_vel(player.vel)
-    camera.set_angle(player.angle)
-    camera.set_time(time % TIME)
+    camera.set_pos( pos )
+    camera.set_vel( vel )
+    camera.set_angle( angle )
+    camera.set_time( time % TIME )
+
+    # Clear the screen
+    draw.clear(0.0, 0.0, 0.0)
     
-    # Drawing
+    # Draw objects
     for sr_object in sr_objects:
         sr_object.draw()
+        
+    # Flip display
     pygame.display.flip()
 
     # Update clock
     dt = clock.tick(30) / 1000
     time += dt
     
-    # Crash out
+    # Handle close window
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             running = False
-
-draw.close()
+# Cleanup
+gl_relativity_py.close()
 pygame.quit()
-sys.exit()
