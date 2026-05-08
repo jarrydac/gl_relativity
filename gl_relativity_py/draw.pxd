@@ -10,3 +10,5 @@ cdef extern from '../include/gl_draw.h':
     void sr_close()
 
     void sr_clear(float r, float g, float b)
+
+    void sr_overlay(char* data, int width, int height)

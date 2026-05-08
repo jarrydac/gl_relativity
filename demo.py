@@ -114,6 +114,8 @@ def poll_keyboard():
     if keys[pygame.K_l]:
         angle[1] += 0.01
 
+font = pygame.font.SysFont(None, 40)
+
 # MAIN LOOP
 while running:
     # Handle input/logic
@@ -131,6 +133,22 @@ while running:
     # Draw objects
     for sr_object in sr_objects:
         sr_object.draw()
+        
+    # Draw pygame graphics
+    overlay = pygame.Surface(SIZE, pygame.SRCALPHA)
+
+    overlay.fill([0,0,0,0])
+    
+    speed = np.linalg.norm(vel)*camera.get_inv_c()
+    loc = np.array(SIZE)
+    colour = np.array([255,255,255,min(speed,1)*255])
+    tail_vec = vel[0:2]*np.array([1,-1])*10
+
+    overlay.blit( font.render( f"{speed:.2f}c", True, "white" ), (0,0) ) 
+    pygame.draw.line(overlay, colour, loc/2, loc/2+tail_vec)
+
+    overlay_bytes = pygame.image.tobytes(overlay,"RGBA",True)
+    draw.overlay(overlay_bytes, SIZE[0], SIZE[1])
         
     # Flip display
     pygame.display.flip()

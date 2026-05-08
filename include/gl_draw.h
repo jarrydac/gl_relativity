@@ -6,6 +6,7 @@
 #include "objects.h"
 #include "mesh.h"
 #include "lights.h"
+#include "overlay_program.h"
 
 // Init functions.
 int sr_draw_init( 
@@ -16,3 +17,5 @@ int sr_draw_init(
 void sr_close(void);
 
 void sr_clear(float r, float g, float b);
+
+void sr_overlay(char* data, uint width, uint height);

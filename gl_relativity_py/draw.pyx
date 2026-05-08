@@ -19,3 +19,8 @@ def close():
 # Clear for next pass
 def clear( r=1.0, g=1.0, b=1.0 ):
     sr_clear(r,g,b)
+    
+def overlay(data, width, height):
+    sr_overlay(data, width, height)
+
+    

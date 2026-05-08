@@ -2,7 +2,7 @@ SRC_DIR = src
 BUILD_DIR = build
 LIB_DIR = lib
 
-objects = $(addprefix $(BUILD_DIR)/,gl_draw.o camera.o mesh.o objects.o shaders.o lights.o)
+objects = $(addprefix $(BUILD_DIR)/,gl_draw.o camera.o mesh.o objects.o shaders.o lights.o overlay_program.o)
 
 LINKER_FLAGS = -lGL -lm
 
