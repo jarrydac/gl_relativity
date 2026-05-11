@@ -31,6 +31,11 @@ Install:
 2. Build the cython module using setup.py (i.e. `python setup.py build_ext --inplace`)
 3. Copy the created `.so`, `shaders/` and `CIE_xyz_1931_2deg.csv` file alongside python project and `import gl_relativity_py`.
 
+## Demo
+
+Here is a link to the demo video: [https://www.youtube.com/watch?v=PWjvE9ucgI0](https://www.youtube.com/watch?v=PWjvE9ucgI0)
+[ ![](https://img.youtube.com/vi/PWjvE9ucgI0/sddefault.jpg) ](https://www.youtube.com/watch?v=PWjvE9ucgI0)
+
 ## Caution
 
 Very much experimental. This is my first project using OpenGL and Cython. Expect egregious errors. 
