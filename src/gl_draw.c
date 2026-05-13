@@ -78,3 +78,7 @@ void sr_overlay(char* data, uint width, uint height){
 
     glBindTexture(GL_TEXTURE_2D,0);
 }
+
+void sr_set_viewport(uint width, uint height){
+    glViewport(0,0,width,height);
+}

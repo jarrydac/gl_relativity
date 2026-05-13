@@ -22,5 +22,8 @@ def clear( r=1.0, g=1.0, b=1.0 ):
     
 def overlay(data, width, height):
     sr_overlay(data, width, height)
+    
+def set_viewport(width,height):
+    sr_set_viewport(width, height)
 
     
