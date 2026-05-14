@@ -10,6 +10,11 @@ import trimesh
 from .util import MAT4_IDENTITY
 from .util_cy cimport safe_malloc, GLResource
 
+# is the module init
+_ISINIT = False
+_Mesh_preload = []
+_Object_preload = []
+
 # Collection of basic primitive meshes
 primitives = {
     "SPHERE": None,
@@ -17,6 +22,10 @@ primitives = {
 }
 
 def init():
+    global _ISINIT
+    global _Mesh_preload
+    global _Object_preload
+
     # Create primitive meshes
     primitives["BOX"] = Mesh.from_trimesh( trimesh.primitives.Box(
         extents=[1,1,1],
@@ -31,9 +40,21 @@ def init():
     primitives["SPHERE"] = Mesh.from_trimesh( trimesh.primitives.Sphere(
         radius=1
         ).to_mesh() ) 
+    
+    # Pass on init
+    for mesh in _Mesh_preload:
+        mesh._gl_init()
+    # Ensure meshes are loaded before objects
+    for obj in _Object_preload:
+        obj._gl_init()
+    
+    del _Mesh_preload
+    del _Object_preload
+    _ISINIT = True
 
 def close():
-    pass
+    global _ISINIT
+    _ISINIT = False
 
 class Worldline:
     """Basic worldline"""
@@ -47,11 +68,29 @@ class Worldline:
 cdef class Mesh(GLResource):
     """ An (immutable) mesh of verticies and indicies """
     cdef sr_mesh* thisptr
+    cdef dict __dict__
     
-    def __init__(self, *args):
+    def __init__(self, offsets, normals, indicies):
+        global _ISINIT
+        global _Mesh_preload
+
         super().__init__()
 
-    def __cinit__(self, offsets, normals, indicies):
+        self._offsets = offsets
+        self._normals = normals
+        self._indicies = indicies
+        
+        if _ISINIT:
+            # If the module is init, we expect an opengl context
+            self._gl_init()
+        else:
+            _Mesh_preload.append(self)
+
+    def _gl_init(self):
+        offsets = self._offsets
+        normals = self._normals
+        indicies = self._indicies
+
         cdef int offsets_len = len(offsets)
         cdef int indicies_len = len(indicies)
 
@@ -76,6 +115,11 @@ cdef class Mesh(GLResource):
                      index_array, indicies_len,
                      offset_array, offsets_len
                      )
+        
+        del self._offsets
+        del self._normals
+        del self._indicies
+        
 
     def __dealloc__(self):
         if self.thisptr is not NULL:
@@ -116,14 +160,21 @@ cdef sr_obj_wl* _wl_to_obj_wl_ptr(wl):
 cdef class Object(GLResource):
     """A drawable object, has a worldline, and associated mesh and a model matrix"""
     cdef sr_object* thisptr
+    cdef dict __dict__
     cdef public wl
 
     def __init__(self, *args):
         super().__init__()
-
-    def __cinit__(self, wl, Mesh mesh, model=MAT4_IDENTITY, color=np.array([1.0,500.0])):
         if(mesh == None):
             raise ValueError("Attempted to create object with no mesh!")
+        self._wl = wl
+        self._mesh = mesh
+        self._model = model
+
+    def _gl_init(self):
+        wl = self._wl
+        mesh = self._mesh
+        model = self._model
 
         # Break all the args down to appropriate structs
         cdef sr_obj_wl* wl_ptr = _wl_to_obj_wl_ptr(wl); 
@@ -141,6 +192,10 @@ cdef class Object(GLResource):
         # These are all copied in so we can destroy these.
         free(wl_ptr)
         self.wl = wl
+
+        del self._wl
+        del self._mesh
+        del self._model
 
     def __dealloc__(self):
         if self.thisptr is not NULL:
