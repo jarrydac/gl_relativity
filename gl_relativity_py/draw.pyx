@@ -20,8 +20,8 @@ def close():
 def clear( r=1.0, g=1.0, b=1.0 ):
     sr_clear(r,g,b)
     
-def overlay(data, width, height):
-    sr_overlay(data, width, height)
+def overlay(data, width, height, depth=0.0):
+    sr_overlay(data, width, height, depth)
     
 def set_viewport(width,height):
     sr_set_viewport(width, height)

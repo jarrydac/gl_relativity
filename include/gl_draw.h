@@ -18,6 +18,6 @@ void sr_close(void);
 
 void sr_clear(float r, float g, float b);
 
-void sr_overlay(char* data, uint width, uint height);
+void sr_overlay(char* data, uint width, uint height, float depth);
 
 void sr_set_viewport(uint width, uint height);

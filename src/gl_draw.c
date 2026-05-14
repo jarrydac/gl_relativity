@@ -31,6 +31,7 @@ int sr_draw_init( char* v_shader_str, char* f_shader_str, vec3 cie_data[471] ){
     glEnable(GL_CLIP_DISTANCE0);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     glEnable( GL_BLEND );
+    glDepthFunc(GL_LEQUAL);
 
     // init 
     sr_shaders_init( v_shader_str, f_shader_str );
@@ -68,14 +69,16 @@ void sr_close(void){
     sr_objects_close();
 }
 
-void sr_overlay(char* data, uint width, uint height){
+void sr_overlay(char* data, uint width, uint height, float depth){
     sr_overlay_use();
     glBindVertexArray(overlay_vao);
     glActiveTexture(OVERLAY_UNIT);
     glBindTexture(GL_TEXTURE_2D,overlay_tex);
+    glDepthMask(GL_FALSE);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
+    sr_overlay_set_layer(depth);
+    glDepthMask(GL_TRUE);
     glDrawArrays(GL_TRIANGLE_STRIP,0,4);
-
     glBindTexture(GL_TEXTURE_2D,0);
 }
 

@@ -4,11 +4,12 @@
 #include <stdio.h>
 
 GLuint overlay_program;
-
+GLuint layer_uniform;
 
 const char* vert_shader_src = 
 "#version 460 core\n"
 "out vec2 v_tex;"
+"uniform float layer;"
 ""
 "const vec2 pos[4]=vec2[4](vec2(-1.0, 1.0),"
 "                          vec2(-1.0,-1.0),"
@@ -18,7 +19,7 @@ const char* vert_shader_src =
 "void main()"
 "{"
 "    v_tex=0.5*pos[gl_VertexID] + vec2(0.5);"
-"    gl_Position=vec4(pos[gl_VertexID], 0.0, 1.0);"
+"    gl_Position=vec4(pos[gl_VertexID], layer, 1.0);"
 "}";
 
 const char* frag_shader_src = 
@@ -77,9 +78,15 @@ int sr_overlay_init(){
     glDeleteShader(frag_shader_id);
     glDeleteShader(vert_shader_id);
 
+    layer_uniform = glGetUniformLocation(overlay_program, "layer");
+
     return 0;
 }
 
 void sr_overlay_use(){
     glUseProgram(overlay_program);
+}
+
+void sr_overlay_set_layer(float layer){
+    glUniform1f(layer_uniform,layer);
 }

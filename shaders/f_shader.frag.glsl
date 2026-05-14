@@ -130,14 +130,22 @@ void main(){
         float light_fragment_shift = 1 / ( 1 - length(vel_fragment_lab)*cos_theta*inv_c );
         float fragment_observer_shift = ( 1 + length(vel_fragment_cam)*cos_theta_prime*inv_c );
         
+        if( length(vel_fragment_lab) == 0.0 ){
+            light_fragment_shift = 1;
+        }
+        
+        if( length(cam_vel_view) == 0.0 ){
+            fragment_observer_shift = 1;
+        }
+        
         float light_observer_shift = light_fragment_shift * fragment_observer_shift;
-        float observer_light_shift = 1/light_observer_shift;
+        float observer_light_shift = 1/light_observer_shift;    
 
         vec3 viewer_dir = normalize( -pos_fragment_cam );
         vec3 reflect_dir = reflect( normalize( pos_fragment_cam - pos_light_cam ), transformed_norm );
         int speculence = 2;
         float spec = pow(max(dot(viewer_dir, reflect_dir), 0.0), speculence);
-
+        
         //
         // Discrete Lighting
         //
