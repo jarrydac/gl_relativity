@@ -11,11 +11,15 @@
 
 typedef struct {
     vec4 events[MAX_WL_LEN];
+    vec3 initial_vel;
+    vec3 final_vel;
     int length;
 } sr_obj_wl;
 
 typedef struct {
     unsigned int anchor_wl;
+    vec3 wl_initial_vel;
+    vec3 wl_final_vel;
     sr_mesh* mesh;
     mat4 model;
     vec2 color;

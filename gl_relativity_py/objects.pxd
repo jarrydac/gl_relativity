@@ -22,6 +22,8 @@ cdef extern from '../include/objects.h':
     ctypedef struct sr_obj_wl:
         vec4* events; # MAX_WL_LEN 1024
         int length
+        vec3 final_vel
+        vec3 initial_vel
 
     ctypedef struct sr_object:
         pass

@@ -20,6 +20,8 @@ void sr_objects_init(void){
     glBindTexture(GL_TEXTURE_2D, wls_tex);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR); // Why do i need to set these on my laptop??
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR); // Why do i need to set these on my laptop??
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE); // To avoid object flying into start position
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE); // To avoid object flying into start position
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0);
     glTexImage2D(GL_TEXTURE_2D, 
             0, GL_RGBA32F, 
@@ -84,6 +86,9 @@ void sr_object_update_wl( sr_object* object, sr_obj_wl* wl ){
             GL_RED_INTEGER, GL_INT,
             &(wl->length)
         );
+    
+    glm_vec3_copy(wl->initial_vel, object->wl_initial_vel);
+    glm_vec3_copy(wl->final_vel, object->wl_final_vel);
 }           
                                                                         
 void sr_object_update_model( sr_object* object, mat4 model ){
@@ -91,7 +96,7 @@ void sr_object_update_model( sr_object* object, mat4 model ){
 }    
 
 void sr_object_draw( sr_object* object ){
-    sr_use_obj_program( object->model, object->anchor_wl, object->color );
+    sr_use_obj_program( object->model, object, object->color );
 
     glActiveTexture(WLS_UNIT);
     glBindTexture(GL_TEXTURE_2D, wls_tex);

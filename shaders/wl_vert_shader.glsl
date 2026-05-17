@@ -15,6 +15,8 @@ layout (location = 1) in vec3 mesh_norm;
 
 // Worldline
 uniform uint wl_i;
+uniform vec3 final_vel;
+uniform vec3 initial_vel;
 layout (binding=0) uniform sampler2D wl_tex;
 layout (binding=1) uniform isampler1D wl_len_tex;
 
@@ -32,8 +34,6 @@ uniform mat4 projection;
 out vec4 pos_st;
 out vec3 norm;
 out vec3 vel;
-
-
 
 // Space time interval x^2 + y^2 + z^2 - (ct)^2
 #define INTERVAL(vec) ( dot((vec).yzw,(vec).yzw) - (1.0/(inv_c*inv_c))*(vec)[0]*(vec)[0] )
@@ -73,8 +73,12 @@ void set(float s, float clip){
     pos_st = WL(s);
     
     // Determine the velocity, using adjacent points
-    vec4 st_a = WL_TEXEL( int( floor(s*float(MAX_WL_LEN)) ) );
-    vec4 st_b = WL_TEXEL( int( ceil(s*float(MAX_WL_LEN)) ) );
+    //vec4 st_a = WL_TEXEL( int( floor(s*float(MAX_WL_LEN)) ) );
+    //vec4 st_b = WL_TEXEL( int( ceil(s*float(MAX_WL_LEN)) ) );
+    
+    // This acts more like a first derivative
+    vec4 st_a = WL(s + 0.01/MAX_WL_LEN);
+    vec4 st_b = WL(s - 0.01/MAX_WL_LEN);
     vel = (st_b.yzw - st_a.yzw)/(st_b[0] - st_a[0]);
     
     if(inv_c == 0){
@@ -94,19 +98,40 @@ void set(float s, float clip){
 */
 void main(){
     norm = normalize( mat3(transpose(inverse(model))) * mat3(transpose(inverse(view))) * mesh_norm ); 
+    vec3 final_vel_view = normalize( mat3(transpose(inverse(view))) * final_vel ) * length(final_vel); 
+    vec3 initial_vel_view = normalize( mat3(transpose(inverse(view))) * initial_vel ) * length(initial_vel); 
+    
+    if(length(final_vel) == 0) final_vel_view = vec3(0.0);
+    if(length(initial_vel) == 0) initial_vel_view = vec3(0.0);
 
     int wl_l;       // Worldline length
     float a;        // Texture position
     float b;        // Texture position
     
     wl_l = texelFetch(wl_len_tex, int(wl_i), 0).r;
+
     a = 0.0;
     b = (float(wl_l)-0.5)/float(MAX_WL_LEN);
 
     // World line is not visible, start point in future.
     vec4 start = WL(a);
     if( start[0] > 0.0 || INTERVAL(start) > 0.0 ){
-        set(a, -1.0);
+        float t = start.x;
+
+        float t1 = 0; // positive interval
+        float t0 = -1.0/0.0; // negetive interval
+
+        float m;
+        for(int i=0; i<ITERS; i++){
+            m = (t0+t1)/2.0;
+            vec4 mid = vec4(m, start.yzw - (t-m)*initial_vel_view);
+            t0 = INTERVAL(mid) > 0.0 ? m : t0;
+            t1 = INTERVAL(mid) < 0.0 ? m : t1;
+        }
+
+        pos_st = vec4(m, start.yzw - (t-m)*initial_vel_view);
+        gl_Position = ST_PROJ(pos_st);
+        vel = initial_vel_view;
         return;
     }
 
@@ -114,7 +139,25 @@ void main(){
     // (Allow an 'infinite' flag?)
     vec4 end = WL(b);
     if( end[0] < 0.0 && INTERVAL(end) < 0.0){
-        set(b, -1.0);
+        // TODO: We need to place on the zero interval line!
+        float t = end.x;
+
+        float t0 = 0.0; // i.e. camera simultaneous positive interval 
+        float t1 = end.x; // negetive interval
+        
+        float m;
+        for(int i=0; i<ITERS; i++){
+            m = (t0+t1)/2.0;
+            vec4 mid = vec4(m, end.yzw + (m-t)*final_vel_view);
+            t0 = INTERVAL(mid) > 0.0 ? m : t0;
+            t1 = INTERVAL(mid) < 0.0 ? m : t1;
+        }
+        
+
+        pos_st = vec4(m, end.yzw + (m-t)*final_vel_view);
+        gl_Position = ST_PROJ(pos_st);
+        vel = initial_vel_view;
+
         return;
     }
 

@@ -17,6 +17,8 @@ static struct {
     int inv_c;
     int wl_id;
     int wl_i;
+    int wl_initial_vel;
+    int wl_final_vel;
     int lorentz;
     int vel;
     int wavelength;
@@ -66,6 +68,8 @@ int sr_shaders_init( char* vertex_shader_src, char* fragment_shader_src ){
     obj_program_uniforms.cam_t = glGetUniformLocation(obj_program, "cam_t");
     obj_program_uniforms.wl_id = glGetUniformLocation(obj_program, "wl_index");
     obj_program_uniforms.wl_i = glGetUniformLocation(obj_program, "wl_i");
+    obj_program_uniforms.wl_initial_vel = glGetUniformLocation(obj_program, "initial_vel");
+    obj_program_uniforms.wl_final_vel = glGetUniformLocation(obj_program, "final_vel");
     obj_program_uniforms.lorentz = glGetUniformLocation(obj_program, "lorentz");
     obj_program_uniforms.vel = glGetUniformLocation(obj_program, "cam_vel");
     obj_program_uniforms.wavelength = glGetUniformLocation(obj_program, "wavelength");
@@ -119,7 +123,7 @@ GLuint sr_link_program( sr_shader* shaders, int num ){
     return program;
 }
 
-void sr_use_obj_program( mat4 model, unsigned int wl_id, vec2 wavelength ){
+void sr_use_obj_program( mat4 model, sr_object* object, vec2 wavelength ){
     glUseProgram(obj_program);
 
     glUniform1f(obj_program_uniforms.inv_c, camera_get_inv_c()); // NEW! For new vec shader
@@ -127,8 +131,10 @@ void sr_use_obj_program( mat4 model, unsigned int wl_id, vec2 wavelength ){
     glUniform1f(obj_program_uniforms.cam_t, camera_get_time());
     glUniformMatrix4fv(obj_program_uniforms.proj, 1, GL_FALSE, (float*)obj_proj_mat);
     
-    glUniform1ui(obj_program_uniforms.wl_id, wl_id);
-    glUniform1ui(obj_program_uniforms.wl_i, wl_id);
+    glUniform1ui(obj_program_uniforms.wl_id, object->anchor_wl);
+    glUniform1ui(obj_program_uniforms.wl_i, object->anchor_wl);
+    glUniform3fv(obj_program_uniforms.wl_initial_vel, 1, (float*) object->wl_initial_vel);
+    glUniform3fv(obj_program_uniforms.wl_final_vel, 1, (float*) object->wl_final_vel);
 
     mat4 view;
     camera_view_matrix( view );

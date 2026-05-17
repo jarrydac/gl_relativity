@@ -61,6 +61,9 @@ class Worldline:
     def __init__(self, events):
         # Update the worldline
         self.dirty = True
+        
+        self.initial_vel = np.array([0.0,0.0,0.0])
+        self.final_vel = np.array([0.0,0.0,0.0])
 
         self._events = [np.array(event[0:4]).copy() for event in events]
         self._events.sort(key = lambda ev: ev[0])
@@ -151,9 +154,13 @@ cdef sr_obj_wl* _wl_to_obj_wl_ptr(wl):
 
     cdef sr_obj_wl* wl_ptr = <sr_obj_wl*> safe_malloc( sizeof(sr_obj_wl) ) # note in objects.h array is fixed size so it is of course already allocated now.
     cdef cnp.ndarray contiguous_events = np.ascontiguousarray(wl._events, dtype='f')
+    cdef cnp.ndarray contiguous_initial = np.ascontiguousarray(wl.initial_vel, dtype='f')
+    cdef cnp.ndarray contiguous_final = np.ascontiguousarray(wl.final_vel, dtype='f')
 
     wl_ptr.length = wl_len
     memcpy(wl_ptr.events, contiguous_events.data, wl_ptr.length*sizeof(vec4))
+    memcpy(wl_ptr.initial_vel, contiguous_initial.data, sizeof(vec3))
+    memcpy(wl_ptr.final_vel, contiguous_final.data, sizeof(vec3))
 
     return wl_ptr
 
@@ -163,22 +170,30 @@ cdef class Object(GLResource):
     cdef dict __dict__
     cdef public wl
 
-    def __init__(self, *args):
+    def __init__(self, wl, Mesh mesh, model=MAT4_IDENTITY, color=np.array([1.0,500.0])):
         super().__init__()
         if(mesh == None):
             raise ValueError("Attempted to create object with no mesh!")
         self._wl = wl
         self._mesh = mesh
         self._model = model
+        self._color = color
+
+        if _ISINIT:
+            # If the module is init, we expect an opengl context
+            self._gl_init()
+        else:
+            _Object_preload.append(self)
 
     def _gl_init(self):
-        wl = self._wl
         mesh = self._mesh
+        wl = self._wl
         model = self._model
+        color = self._color
 
         # Break all the args down to appropriate structs
         cdef sr_obj_wl* wl_ptr = _wl_to_obj_wl_ptr(wl); 
-        cdef sr_mesh* mesh_ptr = mesh.get_pointer();
+        cdef sr_mesh* mesh_ptr = (<Mesh> mesh).get_pointer();
         cdef mat4 model_mat4 = np.ascontiguousarray(model, dtype="f")
         cdef vec2 color_vec2 = np.ascontiguousarray(color, dtype="f")
         

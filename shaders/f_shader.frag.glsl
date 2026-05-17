@@ -62,6 +62,9 @@ vec3 sample_cie_data(float wavelength){
 
 // https://en.wikipedia.org/wiki/Velocity-addition_formula#General_configuration
 vec3 velocity_addition(vec3 u, vec3 v){
+    if( length(u)==0 ) return v;
+    if( length(v)==0 ) return u;
+
     vec3 u_para = dot(u, normalize(v)) * normalize(v); 
     vec3 u_perp = u-u_para;
     
@@ -134,7 +137,7 @@ void main(){
             light_fragment_shift = 1;
         }
         
-        if( length(cam_vel_view) == 0.0 ){
+        if( length(vel_fragment_cam) == 0.0 ){
             fragment_observer_shift = 1;
         }
         
@@ -163,7 +166,7 @@ void main(){
             // Diffuse lighting
             total_rgb += 
                 diffuse_reflection * 
-                max(dot( normalize( pos_light_cam - pos_fragment_cam ), transformed_norm ),0.0) * 
+                max(dot( normalize( pos_light_lab - pos_fragment_lab ), norm ),0.0) * 
                 emission_intensity * 
                 T_xyz_rgb * cie_sensitivities;
 
@@ -191,7 +194,7 @@ void main(){
                 
                 // Diffuse
                 xyz += diffuse_reflection *
-                    max(dot( normalize(pos_light_lab - pos_fragment_cam ), norm ),0.0) * 
+                    max(dot( normalize(pos_light_lab - pos_fragment_lab ), norm ),0.0) * 
                     sample_cie_data(observer_lambda) *
                     diffuse_reflection * // TODO: eval diffuse reflection at cam-shifted wl.
                     emission_intensity;
@@ -199,7 +202,6 @@ void main(){
                 xyz += specular_reflection * 
                     spec * 
                     sample_cie_data(observer_lambda) *
-                    specular_reflection *
                     emission_intensity;
             }
 
